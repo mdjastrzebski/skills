@@ -26,7 +26,7 @@ For more on the CLI, see:
 | Skill | Summary | Install |
 | --- | --- | --- |
 | `implement-idea` | Turn a rough feature or fix idea into an approved spec through a one-question-at-a-time clarifying interview (max 20 questions, the rest decided as stated assumptions), then delegate the build to a subagent sized to the task's difficulty and report how to test it. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill implement-idea` |
-| `fix-issues` | Work through a list of issues one by one: triage and order them (bugs first, then by severity), have a subagent verify and fix each one or explain why not, commit each fix separately on the current branch, and summarize the results. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill fix-issues` |
+| `fix-issues` | Work through a list of issues, or the unresolved review comments on a GitHub PR, one by one: triage and order them (bugs first, then by severity), have a subagent verify and fix each one or explain why not, commit each fix separately on the current branch, and summarize the results. For PR comments, you approve the triage first and can opt in to push and reply on each thread. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill fix-issues` |
 
 ### Understand
 
