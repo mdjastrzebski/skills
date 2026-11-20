@@ -1,6 +1,8 @@
 ---
 name: trim-comments
 description: Use when the user asks to trim, clean up, or reduce code comments, or says code is over-commented. Defaults to the current PR / feature branch; also takes an explicit scope.
+metadata:
+  version: "0.1.0"
 ---
 
 # Trim Comments

@@ -1,6 +1,8 @@
 ---
 name: implement-idea
 description: Use when the user brings a rough idea for a feature, fix, refactor, or other change and wants it turned into a spec and built, or says "implement this idea", "I have an idea for…", "grill me on this, then build it". Runs a one-question-at-a-time clarifying interview (max 20 questions), gets the spec approved, then delegates the build to a subagent sized to the task.
+metadata:
+  version: "0.1.0"
 ---
 
 # Implement Idea

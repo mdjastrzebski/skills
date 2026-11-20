@@ -1,6 +1,8 @@
 ---
 name: summarize-changes
 description: Use when the user asks to summarize, explain, or get an overview of a PR, branch, or their current changes — "what does this PR do", "summarize my branch", "big picture of these changes", "is this the right approach" — before or instead of a detailed code review. Defaults to the current branch against the default branch, including uncommitted changes; also takes a PR number or URL, or a branch name. Not for line-level code review.
+metadata:
+  version: "0.1.0"
 ---
 
 # Summarize Changes

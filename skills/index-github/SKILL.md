@@ -1,6 +1,8 @@
 ---
 name: index-github
 description: Use when the user asks whether a GitHub project is worth adopting or contributing to, or how healthy, active, or well maintained it is — who maintains and backs it, how fast issues and PRs get answered or merged, maturity and breaking-change history, how it compares to alternatives, license and CLA, community channels, what contributions are welcome, or which parts produce the most bugs. Takes a named repo or package (such as a dependency being evaluated) or defaults to the GitHub repo of the current working directory (its upstream if it's a fork), over the last 12 months. A report on the current repo goes to `docs/agents/project-health.md`; a report on any other repo goes to a location the user confirms. Read-only on GitHub.
+metadata:
+  version: "0.1.0"
 ---
 
 # Index GitHub

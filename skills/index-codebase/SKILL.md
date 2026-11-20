@@ -1,6 +1,8 @@
 ---
 name: index-codebase
 description: Use when the user asks to index, map, or document a codebase for agents — build agent docs, an architecture overview, or a knowledge base that later agent sessions can rely on, covering how the code works, how to use and extend it, and how to contribute — or to check, fix, or refresh existing agent docs (`AGENTS.md`, `CLAUDE.md`, `docs/agents/`, editor rule files) after the code changed. Defaults to the whole repository in the current working directory, written to `docs/agents/` and linked from `AGENTS.md`. Not for answering a one-off question about how code works; answer that directly.
+metadata:
+  version: "0.1.0"
 ---
 
 # Index Codebase

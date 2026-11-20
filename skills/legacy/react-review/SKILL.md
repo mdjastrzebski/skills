@@ -1,6 +1,8 @@
 ---
 name: react-review
 description: Review React and React Native code for correctness bugs rooted in effects, identity, state preservation, tree stability, and lifecycle timing. Use when reviewing PRs, patches, or snippets in React or React Native, especially custom Hooks, Effects, subscriptions, keys, and conditional tree changes.
+metadata:
+  version: "0.1.0"
 ---
 
 # React Review

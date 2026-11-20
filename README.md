@@ -53,6 +53,7 @@ These skills are kept installable but are no longer recommended or actively main
 skills/
   <skill-name>/
     SKILL.md
+    CHANGELOG.md
     references/        # optional
     scripts/           # optional
     agents/            # optional
@@ -62,6 +63,7 @@ skills/
 
 - `skills/legacy/` holds retired skills that stay installable; `legacy` is a directory, not a skill.
 - `SKILL.md` is the canonical instruction file for a skill.
+- `CHANGELOG.md` lists what changed in each version of the skill.
 - `references/` holds targeted supporting material that can be loaded on demand.
 - `scripts/` holds optional helper scripts for deterministic work such as fetching and aggregating data.
 - `agents/` holds optional agent-specific metadata or integration config.
@@ -77,8 +79,19 @@ scripts/link-skills.sh            # link skills/ and skills/legacy/ into ~/.agen
 
 Both scripts are idempotent. `remove-global-skills.sh` only touches copies whose lock entry comes from `mdjastrzebski/*`, and it needs `jq`. Run `link-skills.sh` again after adding a skill. The links follow whatever branch is checked out.
 
+## Versioning
+
+Each skill is versioned independently with semver in its `SKILL.md` frontmatter (`metadata.version`); see its `CHANGELOG.md` for what changed. `0.x` means the skill is still evolving. Bump rules and scripts are in [docs/agents/versioning.md](docs/agents/versioning.md).
+
 ## Authoring
 
 This repository is primarily maintained through coding agents.
 
 If you are adding or updating skills here, follow the repo playbook in [AGENTS.md](AGENTS.md).
+
+After changing a skill, bump it and check versions:
+
+```bash
+scripts/bump-skill.sh <name> <patch|minor> -m "what changed"   # once per branch or push
+scripts/check-versions.sh                                       # compares against origin/main
+```

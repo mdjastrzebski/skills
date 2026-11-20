@@ -1,6 +1,8 @@
 ---
 name: fix-issues
 description: Use when the user gives a list of issues, review findings, bug reports, or TODOs and asks to fix them, work through them, or "fix these issues" one by one. Also use when the user asks to "fix the PR comments", "address review comments/feedback", "fix comments on my PR", or "resolve the review"; the target is the PR given by number or URL, else the PR for the current branch. Triages and orders the list, then verifies and fixes each issue in its own subagent, with one commit per fixed issue on the current branch.
+metadata:
+  version: "0.1.0"
 ---
 
 # Fix Issues

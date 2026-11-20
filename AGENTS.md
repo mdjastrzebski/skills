@@ -8,9 +8,11 @@ Read only the guide relevant to your task:
 - [Skill Authoring](docs/agents/skill-authoring.md)
 - [Supporting Files](docs/agents/supporting-files.md)
 - [README Catalog](docs/agents/readme-catalog.md)
+- [Versioning](docs/agents/versioning.md)
 - [Review Checklist](docs/agents/review-checklist.md)
 
 Repo-wide notes:
 
 - No non-default package manager, build, or typecheck commands are currently defined in this repository.
 - If your task adds, removes, or renames a skill, also read [README Catalog](docs/agents/readme-catalog.md).
+- If your task changes a skill, also read [Versioning](docs/agents/versioning.md) and run `scripts/check-versions.sh`.

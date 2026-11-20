@@ -9,13 +9,15 @@ Create each skill in its own directory:
 ```text
 skills/<skill-name>/
   SKILL.md
+  CHANGELOG.md
 ```
 
 Rules:
 
 - Use kebab-case for directory names.
 - The skill directory name and frontmatter `name` should match unless there is a strong reason not to.
-- Every skill must have a `SKILL.md`.
+- Every skill must have a `SKILL.md` and a `CHANGELOG.md`.
+- A new skill starts at version `0.1.0`; see [Versioning](versioning.md).
 - Do not create empty optional folders.
 
 ## Active vs Legacy

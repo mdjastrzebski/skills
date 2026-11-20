@@ -1,6 +1,8 @@
 ---
 name: instrument-with-console-logs
 description: Add temporary `👀 DEBUG` console.log statements to JavaScript/TypeScript code, and remove them again. Use when the user asks to instrument code, add debug or console logs, trace what actually runs at runtime, or see the order and values of a flow — typically to validate the behavior of the current PR or feature branch. Also use when asked to strip or clean up debug logs afterwards. Not for permanent application logging or telemetry.
+metadata:
+  version: "0.1.0"
 ---
 
 # Instrument With Console Logs

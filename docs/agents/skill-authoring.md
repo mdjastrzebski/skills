@@ -8,6 +8,7 @@ Every `SKILL.md` must include:
 
 - `name`
 - `description`
+- `metadata.version` (quoted semver string; see [Versioning](versioning.md))
 
 ## Writing Rules
 
