@@ -65,6 +65,17 @@ skills/
 - `scripts/` holds optional helper scripts for deterministic work such as fetching and aggregating data.
 - `agents/` holds optional agent-specific metadata or integration config.
 
+## Local Development
+
+To work on these skills, symlink them from your clone instead of installing copies. Edits in the working tree then show up in every agent session right away:
+
+```bash
+scripts/remove-global-skills.sh   # delete copies installed by `npx skills add` (add --dry-run to preview)
+scripts/link-skills.sh            # link skills/ and skills/legacy/ into ~/.agents/skills and ~/.claude/skills
+```
+
+Both scripts are idempotent. `remove-global-skills.sh` only touches copies whose lock entry comes from `mdjastrzebski/*`, and it needs `jq`. Run `link-skills.sh` again after adding a skill. The links follow whatever branch is checked out.
+
 ## Authoring
 
 This repository is primarily maintained through coding agents.
