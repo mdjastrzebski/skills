@@ -26,31 +26,20 @@ This is not a code review. No style, naming, typos, small bugs, or test nitpicks
 
 Read the shape first: `git diff --stat -M` and `git diff --name-status -M` (added, modified, deleted, renamed), plus the commit list. Group files into 2 to 6 big blocks by purpose, not by directory. Read enough of each block (the diff plus surrounding code where needed) to understand what it does structurally. Skim or skip lockfiles, generated files, snapshots, and vendored code, and mention them in one line. On large diffs, prioritize new modules, public interfaces, data and schema changes, config, and deleted code. Do not try to read every line.
 
-Write the facts neutrally: no judgments. Emphasize approach, big blocks, structural decisions, and assumptions over details. Mark each decision and assumption as **stated** (in the PR or commits) or **inferred** (from the code). Keep it readable in about two minutes.
+Write the facts neutrally: no judgments. Emphasize approach, big blocks, structural decisions, and assumptions over details. Mark each decision and assumption as **stated** (in the PR or commits) or **inferred** (from the code). Keep it readable in about one minute.
 
 **Block diagram (optional):** add a small Mermaid `flowchart` only when there are 4 or more blocks with real data or control flow between them. One node per block, edges labeled with what passes between them, no file-level nodes. Skip it when the blocks are independent or the paragraph already makes the flow obvious.
 
 **For the code review:** end the facts with two navigation aids, still neutral:
 
 - **Read in this order:** one line ordering the blocks for a line-level reviewer, usually contracts first (schemas, types, public APIs), then the code that implements them, then callers and tests.
-- **Look closely at:** 3 to 5 places where line-level review matters most, named by what they touch, not by whether they look wrong: data migrations, auth or permissions, concurrency or ordering, public API or wire-format changes, deleted or changed behavior, security-sensitive input handling. Each with a file reference. Write "none" if nothing qualifies.
+- **Look closely at:** up to 3 places where line-level review matters most, named by what they touch, not by whether they look wrong: data migrations, auth or permissions, concurrency or ordering, public API or wire-format changes, deleted or changed behavior, security-sensitive input handling. Each with a file reference. Write "none" if nothing qualifies.
 
-Track coverage as you go: which files you read in depth, which you skimmed, and which you collapsed or skipped. It goes on the **Coverage** line of the output.
+Track coverage as you go: which files you read in depth, which you skimmed, and which you collapsed or skipped. It goes on the first line of the output.
 
 The facts must serve two readers: the human, and the evaluator in stage 2. Finalize them before starting stage 2.
 
-### Large changes
-
-Switch to large mode when the change touches more than ~30 files or ~1,500 changed lines, not counting generated files, lockfiles, snapshots, and vendored code.
-
-1. **Classify every file** from the name-status list: core logic, interfaces and types, schema and config, tests, generated, or mechanical (renames, codemods, formatting, import moves). Spot-check a few mechanical files, then collapse each mechanical pattern into one line, e.g. "212 files: import path `a` → `b`". Note any file that breaks the pattern, and read it as core.
-2. **Use commits as blocks when the history is clean.** If commit messages tell a story ("add model", "wire API", "migrate callers"), walk them in order with `git log --reverse --stat <base>..<head>`. If the history is noise ("wip", "fix"), ignore it and group by purpose.
-3. **Map per block, then reduce.** Spawn one subagent per big block (at most 6, in parallel). Give each its file list, the diff refs, and the intent sources, and ask for exactly: what the block does, its interface to the rest of the change, structural decisions, assumptions (stated or inferred), and files read in depth vs. skimmed. Write the facts from those block summaries; read code yourself only where blocks conflict or connect. Without subagent support, do the blocks one at a time and keep a short note per block before moving on.
-4. **Read by priority within a budget.** Within each block: new public interfaces, types, and schemas first, then deleted code, then entry points, then core logic. Stop when the block's picture stops changing, and record what was left unread.
-
-Coverage matters most here: a reader can work with a partial summary only if they know which parts are partial.
-
-If the blocks are unrelated to each other (for example a refactor, a feature, and a dependency bump), state that plainly in the one-paragraph summary.
+**Large changes:** if the change touches more than ~30 files or ~1,500 changed lines (not counting generated files, lockfiles, snapshots, and vendored code), read [references/large-changes.md](references/large-changes.md) and follow it for this stage.
 
 ## 3. Stage 2: evaluation (fresh subagent)
 
@@ -70,11 +59,12 @@ You are evaluating the approach of a change, not reviewing its lines. You are gi
 4. Stay at approach level. No line-level findings: no style, naming, typos, small bugs, or test nitpicks.
 
 Reply with exactly these sections, writing "none" for an empty one rather than inventing content:
-- Overall: one or two sentences. Does the approach fit the stated goal and the codebase?
-- Concerns: at most 5, most important first. Each: what, why it matters, evidence (file reference). If the blocks are unrelated and the change would review better as separate PRs, make "Consider splitting" one of the concerns.
-- Intent vs. code: mismatches between what the PR says and what the code does (scope creep, missing pieces).
-- Questions for the author: worth discussing before line-level review.
+- Overall: one sentence. Does the approach fit the stated goal and the codebase?
+- Concerns: at most 3, most important first. Each one or two sentences: what, why it matters, evidence (file reference). If the blocks are unrelated and the change would review better as separate PRs, make "Consider splitting" one of the concerns.
+- Intent vs. code: one or two sentences on mismatches between what the PR says and what the code does (scope creep, missing pieces).
+- Questions for the author: at most 3, worth discussing before line-level review.
 - Corrections to the facts: anything you found wrong, or "none".
+Be terse. No preamble, no restating the facts.
 ```
 
 **No subagent support:** do stage 2 inline, as a deliberate separate pass after the facts are finalized. Re-read the code for each decision and assumption with a skeptical stance, and follow the same instructions.
@@ -83,41 +73,43 @@ Fold any corrections into the facts you present.
 
 ## 4. Present
 
-Print in chat, using this template. Label the evaluation as opinion. Aim for one to two screens; prefer fewer, sharper points.
+Print in chat, using this template. Label the evaluation as opinion. Aim for one screen.
+
+Length rules:
+- One line per bullet. Block descriptions are one sentence; decisions and assumptions are a short clause each.
+- At most 5 decisions, 4 assumptions, 3 "Not in this change" items. Pick the ones that shape the design; drop the rest.
+- Omit an empty section entirely, except **Concerns** (write "none").
+- Don't repeat a point across sections: if it is a decision, don't restate it as an assumption or a concern.
 
 ```markdown
 ## Summary: <target>
 
 ### Facts
-**Target:** <PR # / branch>, base `<base>`, head `<head>`, uncommitted <included | not included>, N files, +X/−Y
-**Coverage:** <read in depth: N files; skimmed: N; collapsed as mechanical: N (<patterns>); skipped: N (generated, lockfiles)> — or "all files read" for small changes
-**In one paragraph:** <what the change does and why; stated or inferred intent>
+`<PR # / branch / commit>` · base `<base>` · N files, +X/−Y · uncommitted <included | not included> · <"all files read" | coverage: N in depth, N skimmed, N collapsed (<patterns>), N skipped>
+
+<2–3 sentences: what the change does and why; stated or inferred intent>
 
 **Big blocks**
-1. **<name>**: <what it does, how it fits the others>. Key files: `a`, `b`.
+1. **<name>**: <one sentence>. `key-file`
 
-<optional mermaid flowchart of the blocks, only for 4+ connected blocks>
+<optional mermaid flowchart, only for 4+ connected blocks>
 
-**Structural decisions**
-- <decision> (<stated | inferred>). Rejects: <alternative, when obvious>.
+**Decisions**
+- <decision> (<stated | inferred>); rejects <alternative, when obvious>
 
 **Assumptions**
-- <what must be true for this to work> (<stated | inferred>)
+- <what must be true> (<stated | inferred>)
 
-**Not in this change**
-- <expected but absent, stated neutrally>
+**Not in this change:** <item>; <item>
 
-**For the code review**
-- Read in this order: <block> → <block> → <block>
-- Look closely at: <what it touches> (`file`); …
+**For review:** read <block> → <block> → <block>. Look closely at <what it touches> (`file`); …
 
-### Evaluation (opinion, from a separate pass)
-**Overall:** <...>
+### Evaluation (opinion, separate pass)
+**Overall:** <one sentence>
 **Concerns**
-1. <what>: <why it matters>. Evidence: `file`.
-**Intent vs. code:** <...>
-**Questions for the author**
-- <...>
+1. <what>: <why it matters>. `file`
+**Intent vs. code:** <one or two sentences>
+**Questions:** <question>; <question>
 ```
 
 Then, if the target is or has a GitHub PR, offer once to post the summary as a PR comment, saying the evaluation is left out unless they want it included. Post only on an explicit yes. By default the comment contains only the **Facts** section. Include the evaluation only if the user asks for it, and then head it "AI evaluation (opinion, not verified by the author of this comment)". Write the comment to a temp file outside the repo and run `gh pr comment N --body-file <file>`. Never edit the PR description. If there is no PR, or the user declines, stop.
@@ -129,6 +121,6 @@ After presenting, the main agent can go deeper on any block on request.
 - Line-level review or a file-by-file tour.
 - Judgments in the facts section, or facts presented as certain when they are inferred.
 - Letting the evaluation simply endorse the facts; it must check them against the code.
-- Padding. A short, accurate "none" beats an invented concern.
+- Padding or repetition. A short, accurate "none" beats an invented concern.
 - Turning "Look closely at" into findings: it says where review matters, not what is wrong.
 - Diagrams for simple changes, or diagrams that restate the block list.
