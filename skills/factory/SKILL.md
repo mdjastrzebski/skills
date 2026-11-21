@@ -80,11 +80,11 @@ For `not_approved`, `material_deviation`, or a `reproduction_mismatch` with a co
 
 ### Reopened approval
 
-A reopened Spec or Diagnosis stage starts at the stopped Build's end and gets its own ledger row (`Spec 2`, `Diagnosis 2`) with the stop reason and the new approval in its outcome. Record the stopped attempt as a Build row with the stop reason, and the rerun as the next Build row. Windows stay contiguous. Reopen at most once per stage; if the rerun stops again, report the reason and evidence to the user and stop.
+When `implement-spec` stops, end that Build's window at the stop, record the time in the checkpoint, and run its usage report. A reopened Spec or Diagnosis stage starts at the stopped Build's end and gets its own ledger row (`Spec 2`, `Diagnosis 2`) with the stop reason and the new approval in its outcome. Record the stopped attempt as a Build row with the stop reason, and the rerun as the next Build row. Windows stay contiguous. Reopen at most once per stage; if the rerun stops again, report the reason and evidence to the user and stop.
 
 ### After the build
 
-Use the returned checkout and PR refs for the rest of the run. Run the usage report for the build window (it includes subagents) and keep it for Summary 1. Add the ledger to the PR description with the Spec row for idea and supplied spec input, or the Diagnosis row for issue input, then the Build row. Then continue at [2. Post Summary 1](#2-post-summary-1).
+Use the returned checkout and PR refs for the rest of the run. Run the usage report for the build window (it includes subagents) and keep it for Summary 1. Add the ledger to the PR description with every Spec or Diagnosis and Build row recorded so far, in order, including stopped and reopened stages. Then continue at [2. Post Summary 1](#2-post-summary-1).
 
 ### Existing PR review
 
@@ -95,7 +95,7 @@ Use the returned checkout and PR refs for the rest of the run. Run the usage rep
 
 ## 2. Post Summary 1
 
-Run `summarize-changes` through its facts stage against the target PR. Post the returned facts in a PR conversation comment titled `Summary 1`, with the build commit or tested existing PR head so the reader can identify the diff. Include the source report and available diagnosis and verification evidence with the tested SHAs. Use authenticated `gh` or the equivalent GitHub MCP conversation comment tool for PR comments. End the comment with Diagnostics blocks for any applicable `Spec`, `Diagnosis`, and `Build` stages, then for `Summary 1`. Record the Summary 1 row in the checkpoint (written to the ledger with round 1) and verify that the comment was posted before starting review.
+Run `summarize-changes` through its facts stage against the target PR. Post the returned facts in a PR conversation comment titled `Summary 1`, with the build commit or tested existing PR head so the reader can identify the diff. Include the source report and available diagnosis and verification evidence with the tested SHAs. Use authenticated `gh` or the equivalent GitHub MCP conversation comment tool for PR comments. End the comment with Diagnostics blocks for each recorded `Spec`, `Diagnosis`, and `Build` stage in order, including stopped and reopened ones, then for `Summary 1`. Record the Summary 1 row in the checkpoint (written to the ledger with round 1) and verify that the comment was posted before starting review.
 
 ## 3. Review the current PR head
 
