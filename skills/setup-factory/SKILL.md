@@ -9,9 +9,9 @@ metadata:
 
 Prepare a GitHub repository for interactive `factory` runs. Setup installs the skills and fills gaps in the repo's agent instructions. The first Factory run still requires the user's approval of the spec or diagnosis.
 
-- `$setup-factory` prepares the current checkout. Accept a checkout path or GitHub repository as a target.
-- `$setup-factory check` reports readiness without cloning, fetching, installing, editing files, or writing to GitHub. If there is no local checkout, check what you can read remotely and report local checks as unavailable.
-- `$setup-factory and open a draft setup PR` also publishes the portable setup changes. Issue intake is optional. Accept a named existing label or an explicit request to create one. Publish the PR and create the label only when each operation was separately requested. When a request combines `check` with setup, publication, or label creation, run only the read-only check.
+- **Setup** (default) prepares the current checkout. Accept a checkout path or GitHub repository as a target.
+- **Check** (`check`) reports readiness without cloning, fetching, installing, editing files, or writing to GitHub. If there is no local checkout, check what you can read remotely and report local checks as unavailable.
+- **Setup PR**, on request (for example, "and open a draft setup PR"), also publishes the portable setup changes. Issue intake is optional. Accept a named existing label or an explicit request to create one. Publish the PR and create the label only when each operation was separately requested. When a request combines `check` with setup, publication, or label creation, run only the read-only check.
 
 ## 1. Resolve the target and check access
 
@@ -39,7 +39,7 @@ Verify the six installed `SKILL.md` files and supporting files resolve in each s
 
 Reuse the requested label and its current description. If the user wants a dedicated label but has not named it, suggest `factory-ready`. Verify Issues is enabled and check the exact label through authenticated `gh` or GitHub tools. Distinguish a confirmed missing label from a failed read. Only create a missing label when the user explicitly asked to create it and the available identity can do so. Use `gh label create LABEL --repo HOST/OWNER/REPO` or the equivalent GitHub operation, then re-read it. If a retry or concurrent run finds the label already exists, reuse it. Label creation is independent of the setup PR.
 
-Explain who must apply the label. Factory checks the most recent label event on the issue. The actor must be the repository owner for a personal repository or an organization owner for an organization repository. Give the explicit invocation `$factory ISSUE_URL using label LABEL`. Leave applying the label to an eligible owner.
+Explain who must apply the label. Factory checks the most recent label event on the issue. The actor must be the repository owner for a personal repository or an organization owner for an organization repository. Give the explicit invocation in the current harness's syntax, such as `/factory ISSUE_URL using label LABEL` in Claude Code or `$factory ISSUE_URL using label LABEL` in Codex. Leave applying the label to an eligible owner.
 
 ## 4. Fill documentation gaps
 
@@ -51,4 +51,4 @@ Factory's usage diagnostics need Node and access to the live session's transcrip
 
 For a requested setup PR, stage only the portable setup changes. Follow the repo's convention for tracking skill files or installer lockfiles. Check that any tracked symlink resolves within the checkout. Keep unrelated changes and machine-specific paths out of the commit. Commit the staged setup changes if there are any. Check the remote head and look again for an open PR for the same head repository, branch and base before pushing or retrying PR creation. Reuse an existing matching PR and preserve its draft or ready status. If there is no portable change to share, skip creating a PR. Otherwise, push only the setup branch to its verified remote and open a draft if needed. Verify the PR's refs and draft status with authenticated `gh` or equivalent GitHub tools. On a failed push or PR write, keep the completed local setup and report the blocker and the next step.
 
-Report the target and checkout, source revision and six skills' discovery status, changed files, and checks. State idea readiness and, if requested, issue readiness. Distinguish verified access from unverified operations, link the PR or label if applicable, and give one next invocation, such as `$factory <feature idea>`. If the harness needs a fresh session to discover the skills, say so.
+Report the target and checkout, source revision and six skills' discovery status, changed files, and checks. State idea readiness and, if requested, issue readiness. Distinguish verified access from unverified operations, link the PR or label if applicable, and give one next invocation in the current harness's syntax, such as `/factory <feature idea>` or `$factory <feature idea>`. If the harness needs a fresh session to discover the skills, say so.

@@ -66,7 +66,7 @@ Standalone skills that are not part of the factory workflow.
 | --- | --- | --- |
 | `setup-factory` | Check GitHub repo readiness and install Factory's project bundle. Supports optional issue intake and a draft setup PR. | `npx skills add https://github.com/mdjastrzebski/skills --skill setup-factory` |
 
-Add `--global` to install the setup skill once for use across checkouts. Open a fresh agent session in the target repo and run `$setup-factory check` for a read-only report or `$setup-factory` to install the runtime skills and fill any repo-specific instruction gaps. Ask for a draft setup PR if you want to share the portable changes with the team. Label creation requires a separate request.
+Add `--global` to install the setup skill once for use across checkouts. Open a fresh agent session in the target repo and invoke the skill (`/setup-factory` in Claude Code, `$setup-factory` in Codex). Add `check` for a read-only report, or run it without arguments to install the runtime skills and fill any repo-specific instruction gaps. Ask for a draft setup PR if you want to share the portable changes with the team. Label creation requires a separate request.
 
 ### Understand
 
