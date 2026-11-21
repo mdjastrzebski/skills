@@ -47,8 +47,9 @@
  *   (built in for claude-haiku-5-5: 100000) uses the long_context rates; per-model cost_usd is the
  *   sum. Codex has no tiering; its events use the base rates. Claude messages with usage.speed
  *   "fast" are reported as a separate model "<model> (fast)", priced only by a "<model> (fast)"
- *   entry (built in for claude-opus-5-5 and claude-fable-5-2; supply others via --prices, else
- *   cost null and cost_complete false). They never fall back to standard rates.
+ *   entry (built in for claude-opus-5-5 and claude-fable-5-2 input and output only; supply cache
+ *   rates and other models via --prices, else cost null and cost_complete false). They never fall
+ *   back to standard rates.
  *
  * Exit: 0 ok (models empty when nothing matched), 2 bad arguments or no transcript found.
  */
@@ -67,9 +68,10 @@ const BUILTIN_PRICES = {
     // Prompts over 100K tokens: 5x input, 5x output, same cache multipliers.
     long_context: { threshold: 100000, input: 0.5, output: 2.5, cache_write_5m: 0.625, cache_write_1h: 1, cache_read: 0.05 } },
   "claude-fable-5-2": { input: 8, output: 40, cache_write_5m: 10, cache_write_1h: 16, cache_read: 0.2 },
-  // Fast mode (usage.speed "fast") is reported under "<model> (fast)": 2x input/output, same cache_read.
-  "claude-opus-5-5 (fast)": { input: 8, output: 40, cache_write_5m: 10, cache_write_1h: 16, cache_read: 0.4 },
-  "claude-fable-5-2 (fast)": { input: 16, output: 80, cache_write_5m: 20, cache_write_1h: 32, cache_read: 0.4 },
+  // Fast mode (usage.speed "fast") is reported under "<model> (fast)". Only input/output fast prices
+  // are published, so cache rates are omitted: fast messages with cache tokens have cost null unless --prices supplies them.
+  "claude-opus-5-5 (fast)": { input: 8, output: 40 },
+  "claude-fable-5-2 (fast)": { input: 16, output: 80 },
 };
 const FAST_SUFFIX = " (fast)";
 const TOKEN_FIELDS = ["input", "output", "cache_read", "cache_write_5m", "cache_write_1h"];
