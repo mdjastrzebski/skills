@@ -1,6 +1,6 @@
 ---
 name: clarify-idea
-description: Use when the user wants a rough idea turned into an approved spec, says "grill me on this", "spec this out", "implement this idea", or "build this", or Factory sends an idea or a supplied spec to clarify and approve. Interactive by default; use pipeline mode when Factory invokes the skill or the user explicitly requests it. Does not write code.
+description: Use when the user wants a rough idea turned into an approved spec, says "grill me on this", "spec this out", "implement this idea", or "build this idea", or Factory sends an idea or a supplied spec to clarify and approve. Interactive by default; use pipeline mode when Factory invokes the skill or the user explicitly requests it. Does not write code.
 metadata:
   version: "0.1.0"
 ---
@@ -17,6 +17,8 @@ Turn a rough idea into an approved spec, or validate a supplied spec and get it 
 Any material change after approval needs fresh approval.
 
 ## 1. Ground yourself first
+
+If the input is already an approved spec with an approval record (for example from an earlier run, or a diagnosed fix plan the user approved), do not re-approve it: hand it to `implement-spec` when the user asked to build it, or return it to the caller in pipeline mode.
 
 Before the first question, read enough of the codebase to avoid asking what the code already answers: where the change would live, existing patterns it should follow, how tests and the dev loop work (`AGENTS.md`, `CLAUDE.md`, `README`, package scripts). Never ask the user something you can look up.
 
