@@ -22,7 +22,7 @@ Before the first question, read enough of the codebase to avoid asking what the 
 
 Ground the spec in the target codebase. Check that the goal, scope, expected behavior, applicable constraints and edge cases, and observable acceptance criteria give the builder and reviewer enough to work from. Look for conflicts with the codebase or within the spec. Use project conventions for routine implementation choices and record any assumptions that matter to the build.
 
-If a missing or conflicting decision could change the behavior, scope, or acceptance checks, ask the user using phase 2. Recheck the spec after each answer and continue once the decisions that affect the build are settled. Use the user's implementation request and answers as authorization for that scope. Once the spec is ready, prepare the full spec and summary described in phase 3, then go straight to phase 4 without the approval prompt.
+If a missing or conflicting decision could change the behavior, scope, or acceptance checks, ask the user using phase 2. Recheck the spec after each answer. If questioning ends with a material decision still open, report it and pause until the user settles it or delegates it to you. Use the user's implementation request and answers as authorization for that scope. Once the spec is ready, prepare the full spec and summary described in phase 3, then go straight to phase 4 without the approval prompt.
 
 ## 2. Grill, one question at a time
 
