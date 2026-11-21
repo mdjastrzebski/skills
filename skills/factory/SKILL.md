@@ -38,14 +38,18 @@ Make every stage auditable from the PR alone. Each stage publishes its own entry
 
 ### Idea path
 
-Pass the idea and target repo to `implement-idea` in pipeline mode. Wait for explicit user approval of the spec inside that skill. Continue only after it returns a verified draft PR and build commit. Use its checkout and PR refs for the rest of the run. Run the usage report for the build window (it includes subagents) and keep it for Summary 1. Add the ledger to the PR description with the Build row, and with the Diagnosis row on the issue path.
+Pass the idea and target repo to `implement-idea` in pipeline mode. Wait for explicit user approval of the spec inside that skill. Continue only after it returns a verified draft PR and build commit. Use its checkout and PR refs for the rest of the run.
 
 ### Issue path
 
 1. Resolve the supplied GitHub issue and verify a current label was applied by the repository owner. Read the issue's labels and GitHub label events (for example, `gh api repos/OWNER/REPO/issues/NUMBER/events --paginate` or the equivalent GitHub MCP timeline reader). If the user specified a label, check that one; otherwise check each current label. For each checked label, use its most recent `labeled`/`unlabeled` event: it must be `labeled`, and its actor must be the repository owner account or, for an organization-owned repository, an organization owner (for example, `gh api orgs/ORG/memberships/ACTOR` returns `role: admin`). If the owner-applied label cannot be verified, stop before diagnosis and explain the missing evidence.
 2. Run `diagnose-issue`. At the verdict, run the usage report for that window and keep it for the ledger. Present the verdict, evidence, and proposed next step and wait for the user's explicit diagnosis approval. For `CONFIRMED`, offer the full fix plan with the summary for approval together. For any other verdict, stop at the approved diagnosis. Keep any drafted issue reply in chat unless the user explicitly approves posting it. Factory's PR authorization applies only to the PR.
 3. For an approved `CONFIRMED` diagnosis, pass the approved full plan and summary to `implement-idea` in pipeline mode as the approved spec, including the issue URL, baseline, and reproduction. Build from the diagnosed base and verify that the reproduction fails for the diagnosed reason before changing the implementation. If the base has moved and the diagnosis materially changes, return to diagnosis approval. Verify that the same reproduction passes with the fix. Link the issue in the PR body without a closing keyword such as `Fixes`, so merging does not close it automatically.
-4. When `implement-idea` returns the draft PR and build commit, continue at [2. Post Summary 1](#2-post-summary-1).
+4. When `implement-idea` returns the draft PR and build commit, continue at [After the build](#after-the-build).
+
+### After the build
+
+Both paths: run the usage report for the build window (it includes subagents) and keep it for Summary 1. Add the ledger to the PR description with the Build row, and with the Diagnosis row on the issue path. Then continue at [2. Post Summary 1](#2-post-summary-1).
 
 ## 2. Post Summary 1
 
