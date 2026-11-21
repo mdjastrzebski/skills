@@ -1,6 +1,6 @@
 ---
 name: factory
-description: Use when the user asks to run factory on a feature idea or to take an idea from approved spec through a draft PR, review, fixes, and final handoff.
+description: Use when the user asks to run factory on a feature idea, or to take an idea through spec approval, a draft PR, automated review and fix rounds, and a final handoff on the PR.
 metadata:
   version: "0.1.0"
 ---
@@ -29,7 +29,7 @@ Wait for the result. If the reviewer posted comments, read that round's review a
 
 ## 4. Fix the findings
 
-Run `fix-issues` in auto mode with the explicit findings list (even when empty) and the round number. Use list mode so the scope is this review's findings. Capture the verdicts, reasons, checks, and fix commits. Push any new commits before using them in a review or report. If publication fails or the fix skill cannot complete the round, record the blocker and resume here when it is resolved. Individual failed or deferred findings go in the handoff.
+Run `fix-issues` in auto mode with the explicit findings list (even when empty) and the round number, as a pasted-list run rather than a PR run, so the scope is this review's findings. `fix-issues` then commits without pushing or replying on the PR; factory owns publication. Capture the verdicts, reasons, checks, and fix commits. Push any new commits before using them in a review or report. If publication fails or the fix skill cannot complete the round, record the blocker and resume here when it is resolved. Individual failed or deferred findings go in the handoff.
 
 If round 1 publishes any fix commits, repeat steps 3–4 exactly once as round 2 against the updated PR head. Otherwise go to step 5. Keep both rounds' outcomes and note any work left for human review.
 
