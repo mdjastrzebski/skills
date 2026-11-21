@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.0 (2026-11-21)
+
+- Validate supplied implementation specs and continue through the build pipeline once material questions are settled.
+- Return existing-PR diagnosis in chat by default. Run the PR review and fix pipeline on explicit request.
+
 ## 0.5.0 (2026-11-21)
 
 - Run Factory on an existing PR and discover its linked issue. Route remaining fix gaps through review and verify the final commit before marking a draft ready.

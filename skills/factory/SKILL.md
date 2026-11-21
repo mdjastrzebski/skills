@@ -1,15 +1,28 @@
 ---
 name: factory
-description: Use when the user asks to run factory on a feature idea, an owner-labeled GitHub issue, or an existing GitHub PR with or without its source issue. Gets approval, builds or verifies the fix, and runs review and fix rounds through the final handoff.
+description: Use when the user supplies a feature or change spec for implementation, or asks to run Factory on an idea, an owner-labeled GitHub issue, or an existing GitHub PR. PR input defaults to diagnosis in chat. Build and explicitly requested PR review runs continue through review, fixes, and handoff.
 metadata:
-  version: "0.5.0"
+  version: "0.6.0"
 ---
 
 # Factory
 
 Coordinate the pipeline. Use `diagnose-issue` for the diagnosis, `implement-idea` for the build, `summarize-changes` for its facts, a reviewer for findings, and `fix-issues` for triage and fixes. Load companion skills from the harness or their canonical `skills/<name>/SKILL.md` in the same skills release. If a required skill or capability is unavailable, report the blocked stage and how to resume.
 
-Factory invocation authorizes publishing a draft PR when building, pushing fixes to the target PR, posting the pipeline's PR comments, and marking the PR ready for review. After spec or diagnosis approval, proceed without routine user input. Keep draft PRs in draft through the internal review rounds and final handoff. Preserve an existing ready PR's status.
+## Select the path
+
+- `$factory PR #1966` and `$factory diagnose PR #1966` select [Existing PR diagnosis](#existing-pr-diagnosis). A PR URL works in either form. Resolve bare numbers in the target repository when unambiguous. If the user separately and explicitly requests the review and fix pipeline on an existing PR, use [Existing PR review](#existing-pr-review) and its approval gate.
+- An issue alone selects the [Issue path](#issue-path-without-a-pr) and requires a verified owner-applied label before diagnosis.
+- A spec supplied for implementation selects the [Supplied spec path](#supplied-spec-path). A rough feature or change idea selects the [Idea path](#idea-path).
+
+## Existing PR diagnosis
+
+1. Resolve the PR and record its URL, base and head repositories, refs, and exact commit SHAs. Give `diagnose-issue` the PR, any issue the user specified, and both SHAs. Use the PR's recorded base SHA as the baseline. Have it use the linked issue as the bug report, or the PR description if the linked-issue lookup establishes there is none. This path uses the PR as the entry point even when the report comes from a linked issue.
+2. Run `diagnose-issue` in Factory mode using its existing-PR diagnosis instructions for the supported setup and comparison with the PR changes. Return the source report, baseline verdict, comparison result and tested revisions, setup and support evidence, what the patch changes, and proposed next step in chat. Stop after the diagnosis. Keep any checkpoint in task state or scratch space and leave the PR and issue untouched, including when resuming.
+
+## Build and review pipeline
+
+Factory build and explicit PR review requests authorize publishing a draft PR when building, pushing verified fixes as allowed by the selected path, posting pipeline comments and reviews, and marking the PR ready for review. Once the scope is approved under the selected path, proceed without routine user input. Keep draft PRs in draft through the internal review rounds and final handoff. Preserve an existing ready PR's status.
 
 ## Evidence trail
 
@@ -39,13 +52,17 @@ Make every stage auditable from the PR alone. Each stage publishes its own entry
 
 ## 1. Establish the target and approved scope
 
-Use the existing PR path whenever a PR is supplied, including when an issue is also supplied. Use the issue path for an issue alone and the idea path for a feature idea. Resolve GitHub targets by URL or repository-qualified number. Use repository context for unambiguous bare numbers.
+Use the build or review path selected above. Resolve GitHub targets by URL or repository-qualified number. Use repository context for unambiguous bare numbers.
 
 Identify each PR comparison by its head SHA, base ref, and effective merge-base SHA. Read the base ref and both commit SHAs from the same PR snapshot and compute the merge base from those commits. A base branch advance that leaves the merge base unchanged preserves the comparison.
 
 ### Idea path
 
-Pass the idea and target repo to `implement-idea` in pipeline mode. Wait for explicit user approval of the spec inside that skill. Continue only after it returns a verified draft PR and build commit. Use its checkout and PR refs for the rest of the run.
+Pass the idea and target repo to `implement-idea` in pipeline mode. Wait for explicit user approval of the spec inside that skill. Continue at [After the build](#after-the-build) when it returns a verified draft PR and build commit.
+
+### Supplied spec path
+
+Pass the user's spec and target repo to `implement-idea` in pipeline mode as a supplied spec for implementation. Have it validate the spec against the repo and ask one focused question at a time about any gaps that affect the build. The implementation request and clarifying answers authorize the resulting spec within the requested scope. Once it is complete, proceed directly to implementation without a separate approval prompt. Record how the spec was authorized in the checkpoint and the ledger's Build outcome. Continue at [After the build](#after-the-build) when the skill returns a verified draft PR and build commit.
 
 ### Issue path without a PR
 
@@ -56,9 +73,9 @@ Pass the idea and target repo to `implement-idea` in pipeline mode. Wait for exp
 
 ### After the build
 
-For builds from an idea or issue, run the usage report for the build window (it includes subagents) and keep it for Summary 1. Add the ledger to the PR description with the Build row and, for issue input, the Diagnosis row. Then continue at [2. Post Summary 1](#2-post-summary-1).
+Use the returned checkout and PR refs for the rest of the run. Run the usage report for the build window (it includes subagents) and keep it for Summary 1. Add the ledger to the PR description with the Build row and, for issue input, the Diagnosis row. Then continue at [2. Post Summary 1](#2-post-summary-1).
 
-### Existing PR path
+### Existing PR review
 
 1. Resolve the PR and record its status, comparison, head repository, and branch. The owner-label check applies to building from an issue alone. Factory may push fixes when the head repository is the base repository or one the user owns. Any other head, such as a contributor's fork, needs the user's explicit approval to push at step 2 and GitHub write access to that branch.
 2. Run `diagnose-issue` with the PR, any supplied issue, and the comparison's head SHA and merge base. Use an explicitly supplied baseline when given. For PR-only input, use the skill's automatic discovery of the linked issue. Present the source report, diagnosis, verification verdict, tested commits, and proposed next step. For a closed or merged PR, return this evidence in chat and stop. For an open PR, ask for explicit approval of the diagnosed scope and review plan if `VERIFIED`, or of the remaining fix plan if `NOT_FIXED`. For `INCONCLUSIVE`, report the missing evidence and stop before writing to the PR. State where fix commits would be pushed. Keep any issue reply in chat pending separate approval to post.

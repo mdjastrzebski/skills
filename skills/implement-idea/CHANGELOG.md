@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0 (2026-11-21)
+
+- Validate a supplied Factory spec and go straight to the build once any material questions are resolved.
+
 ## 0.2.0 (2026-11-21)
 
 - Add pipeline mode to publish the approved build and spec in a draft PR and return control to the caller.
