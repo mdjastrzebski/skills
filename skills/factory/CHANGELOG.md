@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.0 (2026-11-21)
+
+- Split the build stage: `clarify-idea` produces the approved spec and build estimate, and `implement-spec` builds it in a subagent at the recommended model and effort. The ledger records a separate Spec stage for idea and supplied spec inputs, and the Build outcome names the builder's model and effort.
+
 ## 0.6.0 (2026-11-21)
 
 - Validate supplied implementation specs, show a short spec summary, clarify gaps that affect the build, and continue through the build pipeline after the user approves the spec.

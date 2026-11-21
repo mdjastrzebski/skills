@@ -2,12 +2,12 @@
 name: factory
 description: Use when the user supplies a feature or change spec for implementation, or asks to run Factory on an idea, a GitHub issue, or an existing GitHub PR. PR input defaults to diagnosis in chat. Build and explicitly requested PR review runs continue through review, fixes, and handoff.
 metadata:
-  version: "0.6.0"
+  version: "0.7.0"
 ---
 
 # Factory
 
-Coordinate the pipeline. Use `diagnose-issue` for the diagnosis, `implement-idea` for the build, `summarize-changes` for its facts, a reviewer for findings, and `fix-issues` for triage and fixes. Load companion skills from the harness or their canonical `skills/<name>/SKILL.md` in the same skills release. If a required skill or capability is unavailable, report the blocked stage and how to resume.
+Coordinate the pipeline. Use `diagnose-issue` for the diagnosis, `clarify-idea` for the spec, `implement-spec` for the build, `summarize-changes` for its facts, a reviewer for findings, and `fix-issues` for triage and fixes. Load companion skills from the harness or their canonical `skills/<name>/SKILL.md` in the same skills release. If a required skill or capability is unavailable, report the blocked stage and how to resume.
 
 ## Select the path
 
@@ -28,8 +28,8 @@ Factory build and explicit PR review requests authorize publishing a draft PR wh
 
 Make every stage auditable from the PR alone. Each stage publishes its own entry with Diagnostics; a ledger in the PR description indexes them.
 
-- **Ledger** — a collapsed `<details><summary>Evidence trail</summary>` panel (closed by default, blank lines around its table) at the end of the PR description, between `<!-- evidence-trail:start -->` and `<!-- evidence-trail:end -->`. Append the marked panel when absent. Rewrite only between the markers, then re-read the description to verify. Batch writes after the entry path completes, after each round's review is posted (round 1 also writes the Summary 1 row), after the Final handoff, and after Ready. Keep pending rows in the checkpoint. Before marking the PR ready, the ledger must hold every row but Ready plus the run total. One table row per stage: `#`, stage, skill or agent, outcome, link (comment, review, or commit), models, tokens, cost; then a `Run total` row. Record Diagnosis for issue and existing PR inputs, Build when creating a PR, then Summary 1, each review round, Final handoff, and Ready. Record spec and diagnosis approval in the outcome ("approved by user in chat at Nov 21 12:00 UTC").
-- **Window** — windows are contiguous. Start the first stage at Factory invocation (Build for ideas, Diagnosis for issue or existing PR inputs) and each later stage at the previous stage's recorded end. Record those times in the checkpoint as UTC ISO 8601 ending in `Z`. Before posting a stage's entry, run `node SKILL_DIR/scripts/usage-report.mjs --harness HARNESS --cwd LAUNCH_DIR --session-id ID --since START --until NOW` and keep the JSON. Use this skill's directory for `SKILL_DIR` and the session's original launch directory for `LAUNCH_DIR`, even if the checkout moved. Use the live session ID from the harness, such as `CODEX_THREAD_ID` for Codex when set. If the active ID cannot be verified, record diagnostics as unavailable.
+- **Ledger** — a collapsed `<details><summary>Evidence trail</summary>` panel (closed by default, blank lines around its table) at the end of the PR description, between `<!-- evidence-trail:start -->` and `<!-- evidence-trail:end -->`. Append the marked panel when absent. Rewrite only between the markers, then re-read the description to verify. Batch writes after the entry path completes, after each round's review is posted (round 1 also writes the Summary 1 row), after the Final handoff, and after Ready. Keep pending rows in the checkpoint. Before marking the PR ready, the ledger must hold every row but Ready plus the run total. One table row per stage: `#`, stage, skill or agent, outcome, link (comment, review, or commit), models, tokens, cost; then a `Run total` row. Record Spec for idea and supplied spec inputs, Diagnosis for issue and existing PR inputs, Build when creating a PR (with the difficulty and the builder's model and effort in its outcome), then Summary 1, each review round, Final handoff, and Ready. Record spec and diagnosis approval in the outcome ("approved by user in chat at Nov 21 12:00 UTC").
+- **Window** — windows are contiguous. Start the first stage at Factory invocation (Spec for idea and supplied spec inputs, Diagnosis for issue or existing PR inputs) and each later stage at the previous stage's recorded end. Record those times in the checkpoint as UTC ISO 8601 ending in `Z`. Before posting a stage's entry, run `node SKILL_DIR/scripts/usage-report.mjs --harness HARNESS --cwd LAUNCH_DIR --session-id ID --since START --until NOW` and keep the JSON. Use this skill's directory for `SKILL_DIR` and the session's original launch directory for `LAUNCH_DIR`, even if the checkout moved. Use the live session ID from the harness, such as `CODEX_THREAD_ID` for Codex when set. If the active ID cannot be verified, record diagnostics as unavailable.
 - **Codex source and prices** — run the report where the active thread's rollout is readable. The workspace can use a supplied host export with `--transcript PATH` for the main rollout first and each contributing subagent rollout after it. Alternatively, point `CODEX_HOME` to a readable copy of the host's Codex directory so the script can discover descendants. If the host exposes no rollout, record that reason. Pass a configured `--prices FILE` on every report, including recovery. Show measured tokens when a rate is missing and label the cost unknown. For externally supplied rates, identify the rate source and date when available. Treat `totals.usage_complete: false` as unavailable for the stage and preserve the JSON and warnings in the checkpoint.
 - **Times** — show every published date and time in UTC as `Nov 21 12:00` (month abbreviation, day, 24-hour time, no year or seconds), and a range as `Nov 21 12:00–12:45 UTC`, repeating the date only when it changes. Keep ISO 8601 with `Z` for the checkpoint and script arguments.
 - **Diagnostics** — end the stage's comment or review with the block below. Cache write is `cache_write_5m + cache_write_1h`. Add a `Run total` row to the ledger and to the Final handoff table.
@@ -58,21 +58,25 @@ Identify each PR comparison by its head SHA, base ref, and effective merge-base 
 
 ### Idea path
 
-Pass the idea and target repo to `implement-idea` in pipeline mode. Wait for explicit user approval of the spec inside that skill. Continue at [After the build](#after-the-build) when it returns a verified draft PR and build commit.
+Pass the idea and target repo to `clarify-idea` in pipeline mode. Wait for explicit user approval of the spec inside that skill. Continue at [Build](#build) when it returns the approved spec.
 
 ### Supplied spec path
 
-Pass the user's spec and target repo to `implement-idea` in pipeline mode as a supplied spec for implementation. Have it validate the spec against the repo, show a short spec summary, ask one focused question at a time about any gaps that affect the build, and wait for explicit user approval of the resulting spec inside that skill. Record the approval in the checkpoint and the ledger's Build outcome. Continue at [After the build](#after-the-build) when the skill returns a verified draft PR and build commit.
+Pass the user's spec and target repo to `clarify-idea` in pipeline mode as a supplied spec for implementation. Have it validate the spec against the repo, show a short spec summary, ask one focused question at a time about any gaps that affect the build, and wait for explicit user approval of the resulting spec inside that skill. Continue at [Build](#build) when it returns the approved spec.
+
+### Build
+
+Record the approval and the build estimate in the checkpoint, end the Spec stage at the approval, and run the usage report for its window. Pass the approved full spec, summary, approval record, difficulty, recommended model and effort (with any user override), and target repo to `implement-spec` in pipeline mode. Continue at [After the build](#after-the-build) when it returns a verified draft PR and build commit.
 
 ### Issue path without a PR
 
 1. Resolve the supplied GitHub issue and run `diagnose-issue`. At the verdict, run the usage report for that window and keep it for the ledger. Present the verdict, evidence, and proposed next step and wait for the user's explicit diagnosis approval. For `CONFIRMED`, offer the full fix plan with the summary for approval together. For any other verdict, stop at the approved diagnosis. Keep any drafted issue reply in chat unless the user explicitly approves posting it. Factory's PR authorization applies only to the PR.
-2. For an approved `CONFIRMED` diagnosis, pass the approved full plan and summary to `implement-idea` in pipeline mode as the approved spec, including the issue URL, baseline, and reproduction. Build from the diagnosed base and verify that the reproduction fails for the diagnosed reason before changing the implementation. If the base has moved and the diagnosis materially changes, return to diagnosis approval. Verify that the same reproduction passes with the fix. Link the issue in the PR body without a closing keyword such as `Fixes`, so merging does not close it automatically.
-3. When `implement-idea` returns the draft PR and build commit, continue at [After the build](#after-the-build).
+2. For an approved `CONFIRMED` diagnosis, pass the approved full plan and summary to `implement-spec` in pipeline mode as the approved spec, with the approval record, issue URL, baseline, and reproduction. `implement-spec` sizes the build when the plan has no estimate, and its builder confirms that the reproduction fails for the diagnosed reason before changing the implementation and passes with the fix. Build from the diagnosed base. If the base has moved and the diagnosis materially changes, return to diagnosis approval. Have it link the issue in the PR body without a closing keyword such as `Fixes`, so merging does not close it automatically.
+3. When `implement-spec` returns the draft PR and build commit, continue at [After the build](#after-the-build).
 
 ### After the build
 
-Use the returned checkout and PR refs for the rest of the run. Run the usage report for the build window (it includes subagents) and keep it for Summary 1. Add the ledger to the PR description with the Build row and, for issue input, the Diagnosis row. Then continue at [2. Post Summary 1](#2-post-summary-1).
+Use the returned checkout and PR refs for the rest of the run. Run the usage report for the build window (it includes subagents) and keep it for Summary 1. Add the ledger to the PR description with the Spec row for idea and supplied spec input, or the Diagnosis row for issue input, then the Build row. Then continue at [2. Post Summary 1](#2-post-summary-1).
 
 ### Existing PR review
 
@@ -83,7 +87,7 @@ Use the returned checkout and PR refs for the rest of the run. Run the usage rep
 
 ## 2. Post Summary 1
 
-Run `summarize-changes` through its facts stage against the target PR. Post the returned facts in a PR conversation comment titled `Summary 1`, with the build commit or tested existing PR head so the reader can identify the diff. Include the source report and available diagnosis and verification evidence with the tested SHAs. Use authenticated `gh` or the equivalent GitHub MCP conversation comment tool for PR comments. End the comment with Diagnostics blocks for any applicable `Diagnosis` and `Build` stages, then for `Summary 1`. Record the Summary 1 row in the checkpoint (written to the ledger with round 1) and verify that the comment was posted before starting review.
+Run `summarize-changes` through its facts stage against the target PR. Post the returned facts in a PR conversation comment titled `Summary 1`, with the build commit or tested existing PR head so the reader can identify the diff. Include the source report and available diagnosis and verification evidence with the tested SHAs. Use authenticated `gh` or the equivalent GitHub MCP conversation comment tool for PR comments. End the comment with Diagnostics blocks for any applicable `Spec`, `Diagnosis`, and `Build` stages, then for `Summary 1`. Record the Summary 1 row in the checkpoint (written to the ledger with round 1) and verify that the comment was posted before starting review.
 
 ## 3. Review the current PR head
 
@@ -127,7 +131,7 @@ Send the user the PR and final handoff links with the verified PR status and the
 
 ## 8. Stop and resume on a usage limit
 
-Keep a checkpoint in harness task state or scratch space as the run progresses. Record the entry path, checkout, approved spec, branch and PR, last completed step, PR status, round and reviewed comparison, findings and fix outcomes, and links to reviews, replies, and conversation comments as they become available. For diagnosis paths, include the source report, approved diagnosis, reproduction, tested comparison or commits, and verification outcomes. Record the final handoff comparison and each stage's start and end timestamps, usage-report JSON, and ledger rows.
+Keep a checkpoint in harness task state or scratch space as the run progresses. Record the entry path, checkout, approved spec, build estimate and the builder's model and effort, branch and PR, last completed step, PR status, round and reviewed comparison, findings and fix outcomes, and links to reviews, replies, and conversation comments as they become available. For diagnosis paths, include the source report, approved diagnosis, reproduction, tested comparison or commits, and verification outcomes. Record the final handoff comparison and each stage's start and end timestamps, usage-report JSON, and ledger rows.
 
 On a usage limit, stop starting new work. If the PR exists and the harness still permits a GitHub write, post a PR comment with the step and round where work stopped, the relevant comparison or findings, and the next step to resume. If the limit prevents posting or precedes PR creation, keep the notice in the checkpoint and surface it to the user when possible. On resume, post the notice once a PR and write access are available. Check current GitHub state and the checkpoint before retrying a push, review, comment, or ready-for-review transition. Before republishing a round, look for a review and replies for the same round and reviewed comparison. Record existing links and publish only missing results. Resume from the first incomplete step using the existing PR and approval.
 

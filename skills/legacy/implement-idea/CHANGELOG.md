@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1 (2026-11-21)
+
+- Moved to legacy.
+
 ## 0.3.0 (2026-11-21)
 
 - Validate a supplied Factory spec, show its summary, clarify gaps that affect the build, and build after the user approves it.

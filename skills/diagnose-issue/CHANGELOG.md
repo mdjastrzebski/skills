@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1 (2026-11-21)
+
+- Hand `CONFIRMED` fix plans to `implement-spec`.
+
 ## 0.3.0 (2026-11-21)
 
 - Start Factory PR diagnosis with a supported setup and compare the pinned base with the candidate changes.

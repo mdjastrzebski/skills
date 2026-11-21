@@ -2,7 +2,7 @@
 name: implement-idea
 description: Use when the user wants a rough idea turned into a spec and built, says "implement this idea" or "grill me on this, then build it", or Factory sends a spec to validate and build. Use pipeline mode when Factory invokes the skill or the user explicitly requests it.
 metadata:
-  version: "0.3.0"
+  version: "0.3.1"
 ---
 
 # Implement Idea

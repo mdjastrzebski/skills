@@ -30,12 +30,12 @@ For more on the CLI, see:
 
 ## Factory Workflow
 
-`factory` takes a feature idea, a supplied implementation spec, or a GitHub issue through a draft PR, review, and handoff. Give Factory a spec to implement and it checks the spec against the codebase, shows a short summary of its scope, key decisions, and assumptions, asks about gaps that affect the build, and proceeds once you approve the spec.
+`factory` takes a feature idea, a supplied implementation spec, or a GitHub issue through a draft PR, review, and handoff. Give Factory a spec to implement and it checks the spec against the codebase, shows a short summary of its scope, key decisions, and assumptions, asks about gaps that affect the build, and proceeds once you approve the spec. The approved spec carries a build estimate, and the build runs in a subagent at the recommended model and reasoning effort.
 
 Use `$factory PR #1966` or `$factory diagnose PR #1966` for an existing PR. Factory uses the linked issue or PR description, compares the base with the PR changes, and returns the diagnosis in chat. Request the review and fix pipeline explicitly to continue beyond diagnosis. To install the runtime skills in a repo or locally, install them together.
 
 ```bash
-npx skills add https://github.com/mdjastrzebski/skills --skill factory diagnose-issue implement-idea summarize-changes fix-issues fix-issue
+npx skills add https://github.com/mdjastrzebski/skills --skill factory diagnose-issue clarify-idea implement-spec summarize-changes fix-issues fix-issue
 ```
 
 The tree shows which skills call each other. Each stage skill can also be invoked directly.
@@ -43,7 +43,8 @@ The tree shows which skills call each other. Each stage skill can also be invoke
 ```text
 factory                  # orchestrates the run, posts the handoff, marks the PR ready
 ├── diagnose-issue       # diagnose reports and verify candidate fix PRs
-├── implement-idea       # spec approval, then build and draft PR
+├── clarify-idea         # spec approval and build estimate (model and effort)
+├── implement-spec       # build in a sized subagent, then draft PR
 ├── summarize-changes    # facts for the Summary 1 and Final handoff comments
 └── fix-issues           # triage and fix each review round's findings
     └── fix-issue        # verify and fix one finding
@@ -53,7 +54,8 @@ factory                  # orchestrates the run, posts the handoff, marks the PR
 | --- | --- | --- |
 | `factory` | Take a feature idea, supplied spec, or GitHub issue through a draft PR, review and fix rounds, and a final handoff. Diagnose existing PRs in chat by default. | `npx skills add https://github.com/mdjastrzebski/skills --skill factory` |
 | `diagnose-issue` | Diagnose a GitHub issue, verify a PR against its linked issue, or take both inputs explicitly. Compare the same reproduction on the baseline and PR head to verify the fix. | `npx skills add https://github.com/mdjastrzebski/skills --skill diagnose-issue` |
-| `implement-idea` | Turn a rough idea into an approved spec, or validate a supplied Factory spec and get it approved, then delegate the build. Pipeline mode publishes a draft PR and returns to the caller. | `npx skills add https://github.com/mdjastrzebski/skills --skill implement-idea` |
+| `clarify-idea` | Turn a rough idea into an approved spec by grilling you one question at a time, or validate a supplied spec and get it approved. Estimates the build's difficulty and recommends the builder's model and reasoning effort. Does not write code. | `npx skills add https://github.com/mdjastrzebski/skills --skill clarify-idea` |
+| `implement-spec` | Build an approved spec or fix plan in a subagent at the recommended model and effort, verify it, and report. Pipeline mode publishes a draft PR and returns to the caller. | `npx skills add https://github.com/mdjastrzebski/skills --skill implement-spec` |
 | `summarize-changes` | Summarize a PR, a branch, or your current changes (default: current branch against the default branch, including uncommitted changes) at the level of approach: neutral facts first (big blocks, structural decisions, assumptions, plus a suggested review order and where line-level review matters most), then a skeptical evaluation from a fresh subagent. Large changes follow a separate procedure (classify files, collapse mechanical edits, summarize blocks in parallel), with coverage stating what was read. Not a line-level review; offers to post the result as a PR comment. | `npx skills add https://github.com/mdjastrzebski/skills --skill summarize-changes` |
 | `fix-issues` | Work through a list of issues, or the unresolved review comments on a GitHub PR, one by one: triage and order them (bugs first, then by severity), verify and fix each one or explain the verdict, commit each fix separately on the current branch, and summarize the results. For PR comments, interactive mode asks before fixing and before pushing and replying. Opt-in auto mode handles bugs and medium-or-higher improvements without prompts, defers low-severity improvements, and posts a round summary. | `npx skills add https://github.com/mdjastrzebski/skills --skill fix-issues` |
 | `fix-issue` | Verify one reported issue or review finding, make the smallest warranted fix, and report the verdict and checks. | `npx skills add https://github.com/mdjastrzebski/skills --skill fix-issue` |
@@ -95,6 +97,7 @@ These skills are kept installable but are no longer recommended or actively main
 
 | Skill | Summary | Install |
 | --- | --- | --- |
+| `implement-idea` | Replaced by `clarify-idea` and `implement-spec`. Turn a rough idea into an approved spec, then delegate the build. | `npx skills add https://github.com/mdjastrzebski/skills --skill implement-idea` |
 | `instrument-with-console-logs` | Add temporary `👀 DEBUG` console.log statements across changed code and surrounding lifecycle code to validate runtime behavior, then strip them again. | `npx skills add https://github.com/mdjastrzebski/skills --skill instrument-with-console-logs` |
 | `react-review` | Review React and React Native code for correctness bugs rooted in effects, identity, state preservation, tree stability, and lifecycle timing. | `npx skills add https://github.com/mdjastrzebski/skills --skill react-review` |
 | `trim-comments` | Review the comments in a change, delete the non-essential ones, and tighten the rest — defaults to the current PR / feature branch. | `npx skills add https://github.com/mdjastrzebski/skills --skill trim-comments` |
