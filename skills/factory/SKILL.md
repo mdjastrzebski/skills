@@ -1,6 +1,6 @@
 ---
 name: factory
-description: Use when the user supplies a feature or change spec for implementation, or asks to run Factory on an idea, an owner-labeled GitHub issue, or an existing GitHub PR. PR input defaults to diagnosis in chat. Build and explicitly requested PR review runs continue through review, fixes, and handoff.
+description: Use when the user asks to run Factory on a supplied feature or change spec, an idea, an owner-labeled GitHub issue, or an existing GitHub PR. PR input defaults to diagnosis in chat. Build and explicitly requested PR review runs continue through review, fixes, and handoff.
 metadata:
   version: "0.6.0"
 ---
