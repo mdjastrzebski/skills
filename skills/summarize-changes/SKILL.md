@@ -2,7 +2,7 @@
 name: summarize-changes
 description: Use when the user asks to summarize, explain, or get an overview of a PR, branch, or their current changes — "what does this PR do", "summarize my branch", "big picture of these changes", "is this the right approach" — before or instead of a detailed code review. Defaults to the current branch against the default branch, including uncommitted changes; also takes a PR number or URL, or a branch name. Not for line-level code review.
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # Summarize Changes
@@ -15,14 +15,16 @@ This is not a code review. No style, naming, typos, small bugs, or test nitpicks
 
 ## 1. Resolve the target
 
-- **PR number or URL:** `gh pr view N --json number,title,body,baseRefName,headRefName,url,closingIssuesReferences` for intent and refs, then `gh pr diff N` (or fetch the head and diff against the merge-base). If `gh` is missing or unauthenticated, ask for the branch name instead.
+For each GitHub operation, use an authenticated `gh` when available. Otherwise, use the equivalent GitHub MCP tool. Resolve the repository from the PR URL or the checkout's GitHub remote.
+
+- **PR number or URL:** run `gh pr view N --json number,title,body,baseRefName,headRefName,url,closingIssuesReferences` for intent and refs, then `gh pr diff N`. With MCP, get PR metadata and the diff (for example, `pull_request_read` with methods `get` and `get_diff`). Use local git against the merge-base when you can fetch both refs and need a complete diff. If neither GitHub route can read an explicitly requested PR, ask for the branch name to proceed with local git.
 - **Branch name:** diff `merge-base(<default branch>, <branch>)..<branch>`.
 - **Nothing given:** the current branch against its merge-base with the default branch, plus uncommitted changes (staged, unstaged, and untracked files; list untracked files and read the relevant ones). Find the default branch with `git symbolic-ref refs/remotes/origin/HEAD`, falling back to `main`, then `master`. On the default branch with no commits ahead, summarize only the uncommitted changes.
-- If the current branch has an open PR (`gh pr view` succeeds), use its description as intent and allow the PR comment offer (step 4).
+- For current-branch PR discovery, use `gh pr view` and confirm the PR is open. With MCP, list open PRs by head owner and branch (for example, `list_pull_requests` with `state=open` and `head=OWNER:BRANCH`, or PR search with the same filters). Verify the head repository and branch, then use the PR description as intent and offer to post the summary in Step 4. If PR discovery is unavailable, continue with the local summary.
 - Include uncommitted changes only for the local checkout of the target branch, never for a PR you are not on.
 - If there are no changes at all, say so and stop.
 
-**Intent sources:** PR title and description, linked issues if referenced, commit messages. If there are none, say the intent is inferred from the code.
+**Intent sources:** PR title and description, linked issues if referenced, and commit messages. Open relevant linked issues with `gh issue view URL` or the equivalent GitHub MCP issue reader (for example, `issue_read` with method `get`), including issue links or closing references surfaced by either PR reader. If there are no intent sources, say the intent is inferred from the code.
 
 ## 2. Stage 1: facts (main agent)
 
@@ -114,7 +116,7 @@ Length rules:
 **Questions:** <question>; <question>
 ```
 
-Then, if the target is or has a GitHub PR, offer once to post the summary as a PR comment, saying the evaluation is left out unless they want it included. Post only on an explicit yes. By default the comment contains only the **Facts** section. Include the evaluation only if the user asks for it, and then head it "AI evaluation (opinion, not verified by the author of this comment)". Write the comment to a temp file outside the repo and run `gh pr comment N --body-file <file>`. Never edit the PR description. If there is no PR, or the user declines, stop.
+Then, if the target is or has a GitHub PR, offer once to post the summary as a PR comment, saying the evaluation is left out unless they want it included. Post only on an explicit yes. By default the comment contains only the **Facts** section. Include the evaluation only if the user asks for it, and then head it "AI evaluation (opinion, not verified by the author of this comment)". When an authenticated `gh` is available, write the comment to a temp file outside the repo and run `gh pr comment N --body-file <file>`. Otherwise, use the equivalent GitHub MCP conversation comment tool (for example, `add_issue_comment`) with the PR number and comment body. Never edit the PR description. If there is no PR, or the user declines, stop.
 
 After presenting, the main agent can go deeper on any block on request.
 

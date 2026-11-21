@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0 (2026-11-21)
+
+- Read GitHub feedback and post replies through GitHub MCP when gh is unavailable.
+
 ## 0.3.0 (2026-11-21)
 
 - Add opt-in auto mode with severity filtering, automatic PR replies, and round summaries.
