@@ -43,7 +43,7 @@ The tree shows which skills call each other. Each stage skill can also be invoke
 ```text
 factory                  # orchestrates the run, posts the handoff, marks the PR ready
 ├── diagnose-issue       # diagnose reports and verify candidate fix PRs
-├── implement-idea       # spec validation or approval, then build and draft PR
+├── implement-idea       # spec approval, then build and draft PR
 ├── summarize-changes    # facts for the Summary 1 and Final handoff comments
 └── fix-issues           # triage and fix each review round's findings
     └── fix-issue        # verify and fix one finding
@@ -53,7 +53,7 @@ factory                  # orchestrates the run, posts the handoff, marks the PR
 | --- | --- | --- |
 | `factory` | Take a feature idea, supplied spec, or owner-labeled issue through a draft PR, review and fix rounds, and a final handoff. Diagnose existing PRs in chat by default. | `npx skills add https://github.com/mdjastrzebski/skills --skill factory` |
 | `diagnose-issue` | Diagnose a GitHub issue, verify a PR against its linked issue, or take both inputs explicitly. Compare the same reproduction on the baseline and PR head to verify the fix. | `npx skills add https://github.com/mdjastrzebski/skills --skill diagnose-issue` |
-| `implement-idea` | Turn a rough idea into an approved spec or validate a supplied Factory spec, then delegate the build. Pipeline mode publishes a draft PR and returns to the caller. | `npx skills add https://github.com/mdjastrzebski/skills --skill implement-idea` |
+| `implement-idea` | Turn a rough idea into an approved spec, or validate a supplied Factory spec and get it approved, then delegate the build. Pipeline mode publishes a draft PR and returns to the caller. | `npx skills add https://github.com/mdjastrzebski/skills --skill implement-idea` |
 | `summarize-changes` | Summarize a PR, a branch, or your current changes (default: current branch against the default branch, including uncommitted changes) at the level of approach: neutral facts first (big blocks, structural decisions, assumptions, plus a suggested review order and where line-level review matters most), then a skeptical evaluation from a fresh subagent. Large changes follow a separate procedure (classify files, collapse mechanical edits, summarize blocks in parallel), with coverage stating what was read. Not a line-level review; offers to post the result as a PR comment. | `npx skills add https://github.com/mdjastrzebski/skills --skill summarize-changes` |
 | `fix-issues` | Work through a list of issues, or the unresolved review comments on a GitHub PR, one by one: triage and order them (bugs first, then by severity), verify and fix each one or explain the verdict, commit each fix separately on the current branch, and summarize the results. For PR comments, interactive mode asks before fixing and before pushing and replying. Opt-in auto mode handles bugs and medium-or-higher improvements without prompts, defers low-severity improvements, and posts a round summary. | `npx skills add https://github.com/mdjastrzebski/skills --skill fix-issues` |
 | `fix-issue` | Verify one reported issue or review finding, make the smallest warranted fix, and report the verdict and checks. | `npx skills add https://github.com/mdjastrzebski/skills --skill fix-issue` |
