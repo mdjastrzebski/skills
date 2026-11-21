@@ -2,7 +2,7 @@
 name: factory
 description: Use when the user asks to run factory on a feature idea or an owner-labeled GitHub issue. Takes the work through spec or diagnosis approval, a draft PR, automated review and fix rounds, and a final handoff before marking the PR ready for human review.
 metadata:
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
 # Factory
@@ -11,26 +11,49 @@ Coordinate the pipeline. Use `diagnose-issue` for the diagnosis, `implement-idea
 
 Factory invocation authorizes publishing the draft PR, pushing its fixes, posting the pipeline's PR comments, and marking the PR ready for review. After spec or diagnosis approval, proceed without routine user input. Keep the PR in draft through the internal review rounds and final handoff.
 
+## Evidence trail
+
+Make every stage auditable from the PR alone. Each stage publishes its own entry with Diagnostics; a ledger in the PR description indexes them.
+
+- **Ledger** — a `## Evidence trail` section at the end of the PR description, between `<!-- evidence-trail:start -->` and `<!-- evidence-trail:end -->`. Rewrite only between the markers, then re-read the description to verify. One table row per stage: `#`, stage, skill or agent, outcome, link (comment, review, or commit), models, tokens, cost; then a `Run total` row. Stages: Diagnosis (issue path), Build, Summary 1, each review round, Final handoff, Ready. Record spec and diagnosis approval in the outcome ("approved by user in chat at <UTC time>").
+- **Window** — record the stage's UTC start in the checkpoint when it begins. Before posting its entry, run `node scripts/usage-report.mjs --since START --until NOW` (path relative to this file; `--harness` defaults to auto-detecting Claude Code or Codex; `--help` lists the options) and keep the JSON in the checkpoint.
+- **Diagnostics** — end the stage's comment or review with the block below. Cache write is `cache_write_5m + cache_write_1h`. Add a `Run total` row to the ledger and to the Final handoff table.
+
+  ```
+  <details><summary>Diagnostics — STAGE</summary>
+
+  | Model | Input | Output | Cache read | Cache write | Cost (USD) |
+  | --- | ---: | ---: | ---: | ---: | ---: |
+  | MODEL | … | … | … | … | … |
+  | **Total** | … | … | … | … | **…** |
+
+  Window: START → END UTC · Source: Claude Code or Codex transcript (main + N subagents) · Prices as of DATE
+  </details>
+  ```
+
+- Posting a stage's entry costs tokens that land in the next stage's window. The Final handoff covers everything up to its own posting; the Ready tail goes in the chat notice only.
+- Never estimate. If the script fails, the harness is unsupported, or the transcript is missing, write `Diagnostics unavailable: REASON`. If a model has no price (`cost_usd` null), show its tokens with cost `unknown (no price for MODEL)`; `--prices FILE` supplies prices.
+
 ## 1. Build
 
 ### Idea path
 
-Pass the idea and target repo to `implement-idea` in pipeline mode. Wait for explicit user approval of the spec inside that skill. Continue only after it returns a verified draft PR and build commit. Use its checkout and PR refs for the rest of the run.
+Record the build start in the checkpoint, then pass the idea and target repo to `implement-idea` in pipeline mode. Wait for explicit user approval of the spec inside that skill. Continue only after it returns a verified draft PR and build commit. Use its checkout and PR refs for the rest of the run. Run the usage report for the build window (it includes subagents) and keep it for Summary 1. Add the ledger to the PR description with the Build row, and with the Diagnosis row on the issue path.
 
 ### Issue path
 
 1. Resolve the supplied GitHub issue and verify a current label was applied by the repository owner. Read the issue's labels and GitHub label events (for example, `gh api repos/OWNER/REPO/issues/NUMBER/events --paginate` or the equivalent GitHub MCP timeline reader). If the user specified a label, check that one; otherwise check each current label. For each checked label, use its most recent `labeled`/`unlabeled` event: it must be `labeled`, and its actor must be the repository owner account or, for an organization-owned repository, an organization owner (for example, `gh api orgs/ORG/memberships/ACTOR` returns `role: admin`). If the owner-applied label cannot be verified, stop before diagnosis and explain the missing evidence.
-2. Run `diagnose-issue`. Present the verdict, evidence, and proposed next step and wait for the user's explicit diagnosis approval. For `CONFIRMED`, offer the full fix plan with the summary for approval together. For any other verdict, stop at the approved diagnosis. Keep any drafted issue reply in chat unless the user explicitly approves posting it. Factory's PR authorization applies only to the PR.
-3. For an approved `CONFIRMED` diagnosis, pass the approved full plan and summary to `implement-idea` in pipeline mode as the approved spec, including the issue URL, baseline, and reproduction. Build from the diagnosed base and verify that the reproduction fails for the diagnosed reason before changing the implementation. If the base has moved and the diagnosis materially changes, return to diagnosis approval. Verify that the same reproduction passes with the fix. Link the issue in the PR body without a closing keyword such as `Fixes`, so merging does not close it automatically.
+2. Record the diagnosis start in the checkpoint and run `diagnose-issue`. At the verdict, run the usage report for that window and keep it for the ledger. Present the verdict, evidence, and proposed next step and wait for the user's explicit diagnosis approval. For `CONFIRMED`, offer the full fix plan with the summary for approval together. For any other verdict, stop at the approved diagnosis. Keep any drafted issue reply in chat unless the user explicitly approves posting it. Factory's PR authorization applies only to the PR.
+3. For an approved `CONFIRMED` diagnosis, record the build start, then pass the approved full plan and summary to `implement-idea` in pipeline mode as the approved spec, including the issue URL, baseline, and reproduction. Build from the diagnosed base and verify that the reproduction fails for the diagnosed reason before changing the implementation. If the base has moved and the diagnosis materially changes, return to diagnosis approval. Verify that the same reproduction passes with the fix. Link the issue in the PR body without a closing keyword such as `Fixes`, so merging does not close it automatically.
 4. When `implement-idea` returns the draft PR and build commit, continue at [2. Post Summary 1](#2-post-summary-1).
 
 ## 2. Post Summary 1
 
-Run `summarize-changes` through its facts stage against the draft PR. Post the returned facts in a PR conversation comment titled `Summary 1`, with the build commit so the reader can identify the diff. Use authenticated `gh` or the equivalent GitHub MCP conversation comment tool for PR comments. Verify that the comment was posted before starting review.
+Run `summarize-changes` through its facts stage against the draft PR. Post the returned facts in a PR conversation comment titled `Summary 1`, with the build commit so the reader can identify the diff. Use authenticated `gh` or the equivalent GitHub MCP conversation comment tool for PR comments. Record the Summary 1 start. The comment ends with two Diagnostics blocks, `Build` (the window from step 1, since the build has no comment of its own) and `Summary 1`. Update the ledger and verify that the comment was posted before starting review.
 
 ## 3. Review the current PR head
 
-Read the current head SHA and base ref from the draft PR. Use the harness reviewer (for example, `code-review`) when available, then a fresh review subagent, then direct diff review if neither is available. Review that exact head against the approved spec and base. Give the reviewer the approved spec, PR URL, base ref, head SHA, and this brief:
+Record the round's start in the checkpoint, then read the current head SHA and base ref from the draft PR. Use the harness reviewer (for example, `code-review`) when available, then a fresh review subagent, then direct diff review if neither is available. Review that exact head against the approved spec and base. Give the reviewer the approved spec, PR URL, base ref, head SHA, and this brief:
 
 > Review the PR diff against the approved spec and repo conventions. Look for concrete defects, regressions, and missing verification that could mask them. Return findings to Factory for publication. For each finding give the location, evidence, impact, and what needs to change. Report open questions separately and explicitly return an empty list for a clean review. Leave the checkout untouched.
 
@@ -44,9 +67,9 @@ Run `fix-issues` in auto mode with the explicit findings list (even when empty) 
 
 ## 5. Post the round review
 
-Post one concise GitHub review with the round number, reviewed SHA, and check summary. Use the `COMMENT` review event, since GitHub rejects approvals and change requests from the PR author. Set the GitHub review's commit ID (`commit_id` in the REST API) to the reviewed SHA when supported. Anchor findings inline on the reviewed diff where possible. Give the issue, impact, and disposition in one or two plain-language sentences for each finding. Cite its fix commit only after the push succeeds. For a finding the reviewer already published, reply with the outcome in the existing thread. When there is no usable thread, link to the existing finding and give its outcome in the review body. Put new findings in the review body when the tool cannot target the reviewed diff, there is no usable inline position, or GitHub rejects their anchors. For an empty round, post a brief clean result.
+Post one concise GitHub review with the round number, reviewed SHA, and check summary, ending with the round's Diagnostics (review, fixes, and posting prep; reply threads carry none). Use the `COMMENT` review event, since GitHub rejects approvals and change requests from the PR author. Set the GitHub review's commit ID (`commit_id` in the REST API) to the reviewed SHA when supported. Anchor findings inline on the reviewed diff where possible. Give the issue, impact, and disposition in one or two plain-language sentences for each finding. Cite its fix commit only after the push succeeds. For a finding the reviewer already published, reply with the outcome in the existing thread. When there is no usable thread, link to the existing finding and give its outcome in the review body. Put new findings in the review body when the tool cannot target the reviewed diff, there is no usable inline position, or GitHub rejects their anchors. For an empty round, post a brief clean result.
 
-Verify the review and any replies on GitHub and record their links in the checkpoint before advancing. If round 1 pushed fix commits, repeat steps 3–5 once against the updated PR head. Otherwise go to step 6. Keep both rounds' outcomes and note any work left for human review.
+Verify the review and any replies on GitHub, record their links in the checkpoint, and update the ledger row before advancing. If round 1 pushed fix commits, repeat steps 3–5 once against the updated PR head. Otherwise go to step 6. Keep both rounds' outcomes and note any work left for human review.
 
 ## 6. Post the final handoff
 
@@ -56,19 +79,20 @@ Run the facts stage of `summarize-changes` again against the final published PR 
 - **Deferred items** — remaining work, including failures and why each item is still open.
 - **Open questions** — decisions or verification still needed from the reviewer.
 - **Where to look first** — the suggested review order from the facts and the key files to start with.
+- **Diagnostics** — a table of each stage's models, tokens, and cost with the run total (usage report from the run start to now, or the sum of the stages if the run spanned sessions), and a link to the ledger. Add the stage's own Diagnostics block.
 
-Use `None` for empty sections. Verify publication and keep the comment URL.
+Use `None` for empty sections except Diagnostics. Update the ledger and verify publication, and keep the comment URL.
 
 ## 7. Mark the PR ready and notify
 
 After verifying the final handoff, confirm the open PR still points to the commit named in the handoff. If the head changed, report the mismatch and stop before changing the PR status.
 
-Unless the user asked to keep the PR in draft, mark it ready for review with authenticated `gh pr ready NUMBER` or the equivalent GitHub MCP operation. Skip the mutation if the PR is already ready. Verify the resulting status. If the transition fails, report the blocker and resume at this step when it is resolved.
+Unless the user asked to keep the PR in draft, mark it ready for review with authenticated `gh pr ready NUMBER` or the equivalent GitHub MCP operation. Skip the mutation if the PR is already ready. Verify the resulting status. If the transition fails, report the blocker and resume at this step when it is resolved. Record the Ready row in the ledger (outcome and time only).
 
-Send the user the PR and final handoff links with the verified PR status, using a push notification if the harness offers one and a chat update otherwise. Stop here and wait for interactive follow-up.
+Send the user the PR and final handoff links with the verified PR status and the run total (tokens and cost, or why unavailable), using a push notification if the harness offers one and a chat update otherwise. Stop here and wait for interactive follow-up.
 
 ## 8. Stop and resume on a usage limit
 
-Keep a checkpoint in harness task state or scratch space as the run progresses. Record the checkout, approved spec (and, on the issue path, the owner-label evidence and approved diagnosis), branch and PR, last completed step, PR status, round and reviewed SHA, findings and fix outcomes, and links to reviews, replies, and conversation comments as they become available.
+Keep a checkpoint in harness task state or scratch space as the run progresses. Record the checkout, approved spec (and, on the issue path, the owner-label evidence and approved diagnosis), branch and PR, last completed step, PR status, round and reviewed SHA, findings and fix outcomes, and links to reviews, replies, and conversation comments as they become available. Also record each stage's start and end timestamps, its usage-report JSON, and the ledger rows written.
 
-On a usage limit, stop starting new work. If the PR exists and the harness still permits a GitHub write, post a PR comment with the step and round where work stopped, the relevant SHA or findings, and the next step to resume. If the limit prevents posting or precedes PR creation, keep the notice in the checkpoint and surface it to the user when possible. On resume, post the notice once a PR and write access are available. Check current GitHub state and the checkpoint before retrying a push, review, comment, or ready-for-review transition. Before republishing a round, look for a review and replies for the same round and reviewed SHA. Record existing links and publish only missing results. Resume from the first incomplete step using the existing PR and approval.
+On a usage limit, stop starting new work. If the PR exists and the harness still permits a GitHub write, post a PR comment with the step and round where work stopped, the relevant SHA or findings, and the next step to resume. If the limit prevents posting or precedes PR creation, keep the notice in the checkpoint and surface it to the user when possible. On resume, post the notice once a PR and write access are available. Check current GitHub state and the checkpoint before retrying a push, review, comment, or ready-for-review transition. Before republishing a round, look for a review and replies for the same round and reviewed SHA. Record existing links and publish only missing results. Resume from the first incomplete step using the existing PR and approval. Rebuild missing diagnostics from the transcript when it is still on disk (pass the original `--session-id`); otherwise mark the affected windows `Diagnostics unavailable: session transcript not found after resume`. Check the ledger against the checkpoint and fix missing rows.
