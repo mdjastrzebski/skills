@@ -30,8 +30,9 @@
  *   *.jsonl under projects/<cwd slug>/<session>/ (subagents). Streamed messages repeat; dedupes
  *   by message.id, keeping the last.
  * Codex: $CODEX_HOME or ~/.codex, sessions/**\/rollout-*.jsonl. Counts deltas of the cumulative
- *   token_count totals, attributed to the latest turn_context model. Subagent rollouts are those
- *   whose session_meta names the main session as parent_thread_id or forked_from_id. A fork
+ *   token_count totals, attributed to the latest turn_context model. Subagent rollouts are all
+ *   descendants of the main session (subagents of subagents included), linked by session_meta
+ *   parent_thread_id or forked_from_id. A fork
  *   (forked_from_id) may begin with a copy of the parent's history: in such a rollout, token_count
  *   events stamped before its own session_meta timestamp are ignored, and the first remaining
  *   token_count total is only a baseline (not counted), since the counter may continue from the
@@ -319,9 +320,20 @@ function discoverCodex(opts, cwd) {
   if (!main) return [];
   const sources = [{ path: main.path, role: "main", session_id: main.id }];
   if (main.id) {
-    for (const m of metas.filter((x) => x.parent === main.id).sort((a, b) => a.path.localeCompare(b.path))) {
-      sources.push({ path: m.path, role: "subagent" });
+    // Descendants transitively (main -> A -> B); the seen set also guards against parent cycles.
+    const seen = new Set([main.id]);
+    const descendants = new Set();
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const m of metas) {
+        if (m.parent && seen.has(m.parent) && m.path !== main.path && !descendants.has(m.path)) {
+          descendants.add(m.path);
+          if (m.id) seen.add(m.id);
+          grew = true;
+        }
+      }
     }
+    for (const p of [...descendants].sort()) sources.push({ path: p, role: "subagent" });
   }
   if (!opts.sessionId) sources.others = candidates.slice(1).map((m) => m.path);
   return sources;
