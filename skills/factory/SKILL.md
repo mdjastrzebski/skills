@@ -1,6 +1,6 @@
 ---
 name: factory
-description: Use when the user asks to run factory on a feature idea or an owner-labeled GitHub issue. Takes the work through spec or diagnosis approval, a draft PR, automated review and fix rounds, and a final handoff on the PR.
+description: Use when the user asks to run factory on a feature idea or an owner-labeled GitHub issue. Takes the work through spec or diagnosis approval, a draft PR, automated review and fix rounds, and a final handoff before marking the PR ready for human review.
 metadata:
   version: "0.3.0"
 ---
@@ -9,7 +9,7 @@ metadata:
 
 Coordinate the pipeline. Use `diagnose-issue` for the diagnosis, `implement-idea` for the build, `summarize-changes` for its facts, a reviewer for findings, and `fix-issues` for triage and fixes. Load companion skills from the harness or their canonical `skills/<name>/SKILL.md` in the same skills release. If a required skill or capability is unavailable, report the blocked stage and how to resume.
 
-Factory invocation authorizes publishing the draft PR, pushing its fixes, and posting the pipeline's PR comments. After spec or diagnosis approval, proceed through handoff without routine user input. Keep the PR in draft for final human review.
+Factory invocation authorizes publishing the draft PR, pushing its fixes, posting the pipeline's PR comments, and marking the PR ready for review. After spec or diagnosis approval, proceed without routine user input. Keep the PR in draft through the internal review rounds and final handoff.
 
 ## 1. Build
 
@@ -59,12 +59,16 @@ Run the facts stage of `summarize-changes` again against the final published PR 
 
 Use `None` for empty sections. Verify publication and keep the comment URL.
 
-## 7. Notify and wait
+## 7. Mark the PR ready and notify
 
-Send the user the draft PR and final handoff links, using a push notification if the harness offers one and a chat update otherwise. Stop here and wait for interactive follow-up.
+After verifying the final handoff, confirm the open PR still points to the commit named in the handoff. If the head changed, report the mismatch and stop before changing the PR status.
+
+Unless the user asked to keep the PR in draft, mark it ready for review with authenticated `gh pr ready NUMBER` or the equivalent GitHub MCP operation. Skip the mutation if the PR is already ready. Verify the resulting status. If the transition fails, report the blocker and resume at this step when it is resolved.
+
+Send the user the PR and final handoff links with the verified PR status, using a push notification if the harness offers one and a chat update otherwise. Stop here and wait for interactive follow-up.
 
 ## 8. Stop and resume on a usage limit
 
-Keep a checkpoint in harness task state or scratch space as the run progresses. Record the checkout, approved spec (and, on the issue path, the owner-label evidence and approved diagnosis), branch and PR, last completed step, round and reviewed SHA, findings and fix outcomes, and links to reviews, replies, and conversation comments as they become available.
+Keep a checkpoint in harness task state or scratch space as the run progresses. Record the checkout, approved spec (and, on the issue path, the owner-label evidence and approved diagnosis), branch and PR, last completed step, PR status, round and reviewed SHA, findings and fix outcomes, and links to reviews, replies, and conversation comments as they become available.
 
-On a usage limit, stop starting new work. If the PR exists and the harness still permits a GitHub write, post a PR comment with the step and round where work stopped, the relevant SHA or findings, and the next step to resume. If the limit prevents posting or precedes PR creation, keep the notice in the checkpoint and surface it to the user when possible. On resume, post the notice once a PR and write access are available. Check current GitHub state and the checkpoint before retrying a push, review, or comment. Before republishing a round, look for a review and replies for the same round and reviewed SHA. Record existing links and publish only missing results. Resume from the first incomplete step using the existing draft and approval.
+On a usage limit, stop starting new work. If the PR exists and the harness still permits a GitHub write, post a PR comment with the step and round where work stopped, the relevant SHA or findings, and the next step to resume. If the limit prevents posting or precedes PR creation, keep the notice in the checkpoint and surface it to the user when possible. On resume, post the notice once a PR and write access are available. Check current GitHub state and the checkpoint before retrying a push, review, comment, or ready-for-review transition. Before republishing a round, look for a review and replies for the same round and reviewed SHA. Record existing links and publish only missing results. Resume from the first incomplete step using the existing PR and approval.
