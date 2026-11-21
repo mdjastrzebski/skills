@@ -81,6 +81,12 @@ Standalone skills that are not part of the factory workflow.
 | `index-codebase` | Study a whole repository and write durable agent docs to `docs/agents/` (architecture, area map, design decisions, where to look, configuration and extension, limitations, security, dev loop, contribution rules, release process), linked from `AGENTS.md`; checks and fixes any existing agent docs, and refreshes everything when the code changes. | `npx skills add https://github.com/mdjastrzebski/skills --skill index-codebase` |
 | `index-github` | Assess a GitHub project before adopting or contributing to it (activity and responsiveness, maintainers and backing, maturity, alternatives, license and CLA, community, what contributions are welcome, bug hotspots) and write a dated snapshot to `docs/agents/project-health.md`, linked from `AGENTS.md`. | `npx skills add https://github.com/mdjastrzebski/skills --skill index-github` |
 
+### Triage
+
+| Skill | Summary | Install |
+| --- | --- | --- |
+| `triage-repo` | Report priority, change risk, readiness, and recommended next steps for open GitHub issues and PRs. Defaults to other authors' items, flags potential prompt injection and credential exposure through read-only inspection, and shortlists issues for possible Factory intake. | `npx skills add https://github.com/mdjastrzebski/skills --skill triage-repo` |
+
 ## Legacy Skills
 
 These skills are kept installable but are no longer recommended or actively maintained; they live under `skills/legacy/`.
