@@ -15,6 +15,7 @@
 - Round 2 reviews only the fix commits from round 1, with the full diff as context. Pre-existing findings are not fixed in the PR; the handoff lists them under Follow-ups.
 - Run one reviewer by default, on the most capable model available. Add up to three focused reviewers only when the user or the repo's review guidance asks for them, and name each reviewer and focus in the round review.
 - Round 2 uses a fresh review subagent given the range and full PR diff when the harness reviewer cannot target a commit range, and says so in the round review. The resume checkpoint now records each round's reviewed head SHA, each reviewer and its focus, and the guidance files used, so a resumed run can rebuild round 2 and the round review.
+- Round 2 tags a finding as pre-existing only when the PR's merge base already had the problem. A problem the PR introduced that round 1 missed stays a normal finding, marked missed by round 1, instead of becoming a follow-up.
 
 ## 0.5.0 (2026-11-21)
 
