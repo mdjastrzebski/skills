@@ -3,6 +3,7 @@
 ## 0.6.0 (2026-11-21)
 
 - Auto mode records findings the caller tags as pre-existing as `FOLLOW_UP` instead of fixing them, so they land in a separate change.
+- Auto mode dispatches findings the caller rates `important` instead of deferring them as low-severity improvements, so the reviewer's rating carries into what gets fixed.
 
 ## 0.5.0 (2026-11-21)
 
