@@ -27,7 +27,7 @@ For more on the CLI, see:
 | --- | --- | --- |
 | `implement-idea` | Turn a rough feature or fix idea into an approved spec through a one-question-at-a-time clarifying interview (max 20 questions, the rest decided as stated assumptions), then delegate the build to a subagent sized to the task's difficulty and report how to test it. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill implement-idea` |
 | `fix-issue` | Verify one reported issue or review finding, make the smallest warranted fix, and report the verdict and checks. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill fix-issue` |
-| `fix-issues` | Work through a list of issues, or the unresolved review comments on a GitHub PR, one by one: triage and order them (bugs first, then by severity), verify and fix each one or explain the verdict, commit each fix separately on the current branch, and summarize the results. For PR comments, you approve the triage first and can opt in to push and reply on each thread. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill fix-issues` |
+| `fix-issues` | Work through a list of issues, or the unresolved review comments on a GitHub PR, one by one: triage and order them (bugs first, then by severity), verify and fix each one or explain the verdict, commit each fix separately on the current branch, and summarize the results. For PR comments, interactive mode asks before fixing and before pushing and replying. Opt-in auto mode handles bugs and medium-or-higher improvements without prompts, defers low-severity improvements, and posts a round summary. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill fix-issues` |
 
 ### Understand
 

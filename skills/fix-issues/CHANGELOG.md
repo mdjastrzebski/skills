@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0 (2026-11-21)
+
+- Add opt-in auto mode with severity filtering, automatic PR replies, and round summaries.
+
 ## 0.2.0 (2026-11-21)
 
 - Delegate individual fixes to fix-issue, with inline instructions when the skill or subagents are unavailable.
