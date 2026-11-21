@@ -85,7 +85,7 @@ Standalone skills that are not part of the factory workflow.
 
 | Skill | Summary | Install |
 | --- | --- | --- |
-| `triage-repo` | Report priority, change risk, readiness, and recommended next steps for open GitHub issues and PRs. Defaults to other authors' items, flags potential prompt injection and credential theft through read-only inspection, and shortlists issues for possible Factory intake. | `npx skills add https://github.com/mdjastrzebski/skills --skill triage-repo` |
+| `triage-repo` | Report priority, change risk, readiness, and recommended next steps for open GitHub issues and PRs. Defaults to other authors' items, flags potential prompt injection and credential exposure through read-only inspection, and shortlists issues for possible Factory intake. | `npx skills add https://github.com/mdjastrzebski/skills --skill triage-repo` |
 
 ## Legacy Skills
 
