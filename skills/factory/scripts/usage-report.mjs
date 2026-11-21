@@ -10,7 +10,8 @@
  *
  *   --harness     transcript format; auto (default) picks the harness with a transcript for the
  *                 cwd, the most recently modified if both
- *   --since/until only count records whose timestamp is inside [since, until]
+ *   --since/until only count records whose timestamp is in the half-open window [since, until), so
+ *                 adjacent windows (one stage's --until = the next one's --since) never double count
  *   --session-id  use that session instead of the newest one for the cwd. Always pass it when
  *                 several sessions may share the cwd; without it, another session's usage inside
  *                 the window adds a format_warnings entry
@@ -127,7 +128,7 @@ function makeWindow(opts) {
       if (since === null && until === null) return true;
       const t = typeof ts === "string" ? Date.parse(ts) : NaN;
       if (Number.isNaN(t)) return false;
-      return (since === null || t >= since) && (until === null || t <= until);
+      return (since === null || t >= since) && (until === null || t < until);
     },
   };
 }
