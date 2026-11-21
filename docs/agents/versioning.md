@@ -22,7 +22,7 @@ metadata:
 ```
 
 - Use ISO dates. Write bullets for people who installed the skill: what changed in behavior, not which lines moved.
-- There is no repo-wide version or changelog. Changes to `README.md`, `docs/agents/`, or `scripts/` never bump a skill.
+- There is no repo-wide version or changelog. Changes limited to `README.md`, `docs/agents/`, `scripts/`, `.claude/`, or `.agents/` require no skill version bump.
 
 ## Bump Levels
 

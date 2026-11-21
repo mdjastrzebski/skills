@@ -26,6 +26,7 @@ Rules:
 - `legacy` is a reserved directory name, not a skill.
 - New skills always go in `skills/`, never straight to legacy.
 - To retire a skill, `git mv` it into `skills/legacy/` and move its README row to the Legacy table. To revive it, move it back.
+- After retiring or reviving a skill, run `scripts/link-project-skills.sh` to update project discovery.
 - Skill names must stay unique across both locations.
 
 ## Default Direction
