@@ -27,9 +27,9 @@ Read a GitHub issue, establish what happened, and return a verdict and evidence.
 | --- | --- |
 | `CONFIRMED` | The target base reproduces an actionable defect. Include the root cause and a fix plan with scope, expected behavior, files or interfaces involved, and acceptance checks. |
 | `NEEDS_INFO` | Available evidence is insufficient. Draft a reply asking for the smallest missing detail needed to proceed. |
-| `NOT_A_BUG` | Evidence shows the behavior is expected or already correct on the target base. Cite what establishes that. |
-| `WONT_FIX` | Evidence supports the report, and a documented scope, cost, compatibility, or ownership reason makes a fix unwarranted. State the reason. |
+| `NOT_A_BUG` | Evidence shows the behavior is expected or already correct on the target base. Cite what establishes that and draft a reply explaining it. |
+| `WONT_FIX` | Evidence supports the report, and a documented scope, cost, compatibility, or ownership reason makes a fix unwarranted. State the reason and draft a reply explaining it. |
 
 Return the issue link, verdict, behavior, baseline, reproduction and result, root cause or evidence, and the next step. For `CONFIRMED`, also return a concise summary and a full fix plan suitable for approval and handoff to `implement-idea`. The plan must start by adding or copying the reproduction and running it on the unchanged implementation, then making the fix and rerunning the reproduction and relevant checks. Include enough reproduction detail in the plan to rebuild it without access to a scratch file.
 
-Return the diagnosis to the caller in factory mode or present it in chat in standalone mode. Keep any reply in draft form until the user explicitly approves posting that reply to the source issue. Diagnosis approval alone authorizes no issue comment or other issue mutation.
+Return the diagnosis to the caller in factory mode or present it in chat in standalone mode. Keep any reply in draft form until the user explicitly approves posting that reply to the source issue. Diagnosis approval alone authorizes no issue comment or other issue mutation. After approval, post exactly the approved reply with authenticated `gh issue comment` or the equivalent GitHub MCP tool, and verify that it was posted.

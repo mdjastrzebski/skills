@@ -11,16 +11,18 @@ Coordinate the pipeline. Use `diagnose-issue` for the diagnosis, `implement-idea
 
 Factory invocation authorizes publishing the draft PR, pushing its fixes, and posting the pipeline's PR comments. After spec or diagnosis approval, proceed through handoff without routine user input. Keep the PR in draft for final human review.
 
-## 1. Build from an idea
+## 1. Build
+
+### Idea path
 
 Pass the idea and target repo to `implement-idea` in pipeline mode. Wait for explicit user approval of the spec inside that skill. Continue only after it returns a verified draft PR and build commit. Use its checkout and PR refs for the rest of the run.
 
 ### Issue path
 
-1. Resolve the supplied GitHub issue and verify a current label was applied by the repository owner. Read the issue's labels and GitHub label events (for example, `gh api repos/OWNER/REPO/issues/NUMBER/events --paginate` or the equivalent GitHub MCP timeline reader). Use the most recent apply/remove event for that label. If the user specified a label, check that one. Verify the apply event's actor against the repository owner account or, for an organization, verified organization ownership. If the owner-applied label cannot be verified, stop before diagnosis and explain the missing evidence.
+1. Resolve the supplied GitHub issue and verify a current label was applied by the repository owner. Read the issue's labels and GitHub label events (for example, `gh api repos/OWNER/REPO/issues/NUMBER/events --paginate` or the equivalent GitHub MCP timeline reader). If the user specified a label, check that one; otherwise check each current label. For each checked label, use its most recent `labeled`/`unlabeled` event: it must be `labeled`, and its actor must be the repository owner account or, for an organization-owned repository, an organization owner (for example, `gh api orgs/ORG/memberships/ACTOR` returns `role: admin`). If the owner-applied label cannot be verified, stop before diagnosis and explain the missing evidence.
 2. Run `diagnose-issue`. Present the verdict, evidence, and proposed next step and wait for the user's explicit diagnosis approval. For `CONFIRMED`, offer the full fix plan with the summary for approval together. For any other verdict, stop at the approved diagnosis. Keep any drafted issue reply in chat unless the user explicitly approves posting it. Factory's PR authorization applies only to the PR.
-3. For an approved `CONFIRMED` diagnosis, pass the approved full plan and summary to `implement-idea` in pipeline mode as the approved spec, including the issue URL, baseline, and reproduction. Build from the diagnosed base and verify that the reproduction fails for the diagnosed reason before changing the implementation. If the base has moved and the diagnosis materially changes, return to diagnosis approval. Verify that the same reproduction passes with the fix. Use a plain issue link in the PR body.
-4. When `implement-idea` returns the draft PR and build commit, continue at step 2 below.
+3. For an approved `CONFIRMED` diagnosis, pass the approved full plan and summary to `implement-idea` in pipeline mode as the approved spec, including the issue URL, baseline, and reproduction. Build from the diagnosed base and verify that the reproduction fails for the diagnosed reason before changing the implementation. If the base has moved and the diagnosis materially changes, return to diagnosis approval. Verify that the same reproduction passes with the fix. Link the issue in the PR body without a closing keyword such as `Fixes`, so merging does not close it automatically.
+4. When `implement-idea` returns the draft PR and build commit, continue at [2. Post Summary 1](#2-post-summary-1).
 
 ## 2. Post Summary 1
 
@@ -57,6 +59,6 @@ Send the user the draft PR and final handoff links, using a push notification if
 
 ## 7. Stop and resume on a usage limit
 
-Keep a checkpoint in harness task state or scratch space as the run progresses. Record the checkout, approved spec, branch and PR, last completed step, round and reviewed SHA, findings and fix outcomes, and published comment links as they become available.
+Keep a checkpoint in harness task state or scratch space as the run progresses. Record the checkout, approved spec (and, on the issue path, the owner-label evidence and approved diagnosis), branch and PR, last completed step, round and reviewed SHA, findings and fix outcomes, and published comment links as they become available.
 
 On a usage limit, stop starting new work. If the PR exists and the harness still permits a GitHub write, post a PR comment with the step and round where work stopped, the relevant SHA or findings, and the next step to resume. If the limit prevents posting or precedes PR creation, keep the notice in the checkpoint and surface it to the user when possible. On resume, post the notice once a PR and write access are available. Check current GitHub state and the checkpoint before retrying a push, review, or comment. Resume from the first incomplete step using the existing draft and approval.
