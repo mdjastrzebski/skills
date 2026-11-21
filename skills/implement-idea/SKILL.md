@@ -22,7 +22,7 @@ Before the first question, read enough of the codebase to avoid asking what the 
 
 Ground the spec in the target codebase. Check that the goal, scope, expected behavior, applicable constraints and edge cases, and observable acceptance criteria give the builder and reviewer enough to work from. Look for conflicts with the codebase or within the spec. Use project conventions for routine implementation choices and record any assumptions that matter to the build.
 
-Save the supplied spec as the full spec described in phase 3 and show its summary in that format: short bullets for the goal, scope in and out, behavior, key decisions, assumptions, and acceptance criteria, with the key decisions and assumptions highlighted. Show the summary before asking any question.
+Write the full spec described in phase 3 from the supplied spec and the assumptions recorded above, and show its summary in that format: short bullets for the goal, scope in and out, behavior, key decisions, assumptions, and acceptance criteria, with the key decisions and assumptions highlighted. Show the summary before asking any question.
 
 If a missing or conflicting decision could change the behavior, scope, or acceptance checks, ask the user using phase 2. Recheck the spec after each answer, update both versions, and re-present only the changed parts of the summary. Skip questioning when the spec has no such gaps. Then ask for approval as in phase 3 and stop until the user approves. Continue at phase 4 only after explicit approval.
 
