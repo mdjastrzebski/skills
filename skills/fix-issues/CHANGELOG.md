@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.0 (2026-11-21)
+
+- Accept an explicit empty findings list in auto mode and return a zero-count round summary.
+- Treat a findings list supplied by a calling workflow as a pasted-list run: no PR fetch, push, or replies, even when items link PR comments.
+
 ## 0.4.0 (2026-11-21)
 
 - Read GitHub feedback and post replies through GitHub MCP when gh is unavailable.
