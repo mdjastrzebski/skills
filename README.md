@@ -39,7 +39,7 @@ npx skills add https://github.com/mdjastrzebski/skills --skill factory diagnose-
 The tree shows which skills call each other. Each stage skill can also be invoked directly.
 
 ```text
-factory                  # orchestrates the run, posts the PR comments, hands off
+factory                  # orchestrates the run, posts the handoff, marks the PR ready
 ├── diagnose-issue       # issue path: reproduce and diagnose before approval
 ├── implement-idea       # spec approval and build; pipeline mode opens the draft PR
 ├── summarize-changes    # facts for the Summary 1 and Final handoff comments
@@ -49,7 +49,7 @@ factory                  # orchestrates the run, posts the PR comments, hands of
 
 | Skill | Summary | Install |
 | --- | --- | --- |
-| `factory` | Take a feature idea or an owner-labeled GitHub issue through approval, a draft PR, up to two review and fix rounds, and a final handoff on the PR. Uses `implement-idea`, `summarize-changes`, `fix-issues`, and `diagnose-issue` for issues. | `npx skills add https://github.com/mdjastrzebski/skills --skill factory` |
+| `factory` | Take a feature idea or an owner-labeled GitHub issue through approval, a draft PR, and up to two review and fix rounds. Post the final handoff and mark the PR ready for human review. Uses `implement-idea`, `summarize-changes`, `fix-issues`, and `diagnose-issue` for issues. | `npx skills add https://github.com/mdjastrzebski/skills --skill factory` |
 | `diagnose-issue` | Reproduce and diagnose a GitHub issue, then return a verdict with evidence, a fix plan, or a drafted reply as appropriate. | `npx skills add https://github.com/mdjastrzebski/skills --skill diagnose-issue` |
 | `implement-idea` | Turn a rough idea into an approved spec and delegate the build. Interactive use reports how to test it. Pipeline mode publishes a draft PR with the approved spec and returns to the caller. | `npx skills add https://github.com/mdjastrzebski/skills --skill implement-idea` |
 | `summarize-changes` | Summarize a PR, a branch, or your current changes (default: current branch against the default branch, including uncommitted changes) at the level of approach: neutral facts first (big blocks, structural decisions, assumptions, plus a suggested review order and where line-level review matters most), then a skeptical evaluation from a fresh subagent. Large changes follow a separate procedure (classify files, collapse mechanical edits, summarize blocks in parallel), with coverage stating what was read. Not a line-level review; offers to post the result as a PR comment. | `npx skills add https://github.com/mdjastrzebski/skills --skill summarize-changes` |
