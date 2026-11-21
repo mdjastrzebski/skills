@@ -1,11 +1,11 @@
 ---
-name: story
+name: explain
 description: Explain how a system, module, service, library, framework, subsystem, or unfamiliar codebase works by telling the story of the system. Use when the user asks how something works, how it is structured or designed, asks to explain or walk through an architecture or design, wants a high-level overview of a package or subsystem, or wants to be onboarded to unfamiliar code. Not for narrow lookups answerable by pointing at a single function or config value.
 metadata:
   version: "0.1.0"
 ---
 
-# Story
+# Explain
 
 When asked to explain how a given system, module, or other large part of code works, tell the "story of the system".
 
