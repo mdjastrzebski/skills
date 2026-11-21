@@ -15,7 +15,7 @@ Factory invocation authorizes publishing the draft PR, pushing its fixes, postin
 
 Make every stage auditable from the PR alone. Each stage publishes its own entry with Diagnostics; a ledger in the PR description indexes them.
 
-- **Ledger** — a `## Evidence trail` section at the end of the PR description, between `<!-- evidence-trail:start -->` and `<!-- evidence-trail:end -->`. Rewrite only between the markers, then re-read the description to verify. One table row per stage: `#`, stage, skill or agent, outcome, link (comment, review, or commit), models, tokens, cost; then a `Run total` row. Stages: Diagnosis (issue path), Build, Summary 1, each review round, Final handoff, Ready. Record spec and diagnosis approval in the outcome ("approved by user in chat at <UTC time>").
+- **Ledger** — a `## Evidence trail` section at the end of the PR description, between `<!-- evidence-trail:start -->` and `<!-- evidence-trail:end -->`. Rewrite only between the markers, then re-read the description to verify. Each rewrite resends the whole description, so batch: write after Build (Diagnosis row on the issue path), after each round's review is posted (round 1 also writes the Summary 1 row), after the Final handoff, and after Ready; keep other rows in the checkpoint. Before marking the PR ready, the ledger must hold every row but Ready plus the run total. One table row per stage: `#`, stage, skill or agent, outcome, link (comment, review, or commit), models, tokens, cost; then a `Run total` row. Stages: Diagnosis (issue path), Build, Summary 1, each review round, Final handoff, Ready. Record spec and diagnosis approval in the outcome ("approved by user in chat at <UTC time>").
 - **Window** — windows are contiguous. The first stage (Diagnosis on the issue path, else Build) starts at factory invocation; every later stage starts at the previous stage's recorded end, so no work falls between stages. Record the invocation time in the checkpoint at the start and each stage's end (`NOW` below) when you run its report. Before posting a stage's entry, run `node SKILL_DIR/scripts/usage-report.mjs --cwd LAUNCH_DIR --since START --until NOW` (`SKILL_DIR` is this skill's directory; `LAUNCH_DIR` is the directory the session was launched from, which may differ from the checkout or worktree; never `cd` into the skill directory; `--harness` defaults to auto-detecting Claude Code or Codex; `--help` lists the options) and keep the JSON in the checkpoint. On the first run, omit `--session-id`, record the output's `session_id` in the checkpoint, and pass `--session-id ID` on every later call; a `format_warnings` entry about other sessions means the id is missing or wrong.
 - **Diagnostics** — end the stage's comment or review with the block below. Cache write is `cache_write_5m + cache_write_1h`. Add a `Run total` row to the ledger and to the Final handoff table.
 
@@ -49,7 +49,7 @@ Pass the idea and target repo to `implement-idea` in pipeline mode. Wait for exp
 
 ## 2. Post Summary 1
 
-Run `summarize-changes` through its facts stage against the draft PR. Post the returned facts in a PR conversation comment titled `Summary 1`, with the build commit so the reader can identify the diff. Use authenticated `gh` or the equivalent GitHub MCP conversation comment tool for PR comments. The comment ends with two Diagnostics blocks, `Build` (the window from step 1, since the build has no comment of its own) and `Summary 1`. Update the ledger and verify that the comment was posted before starting review.
+Run `summarize-changes` through its facts stage against the draft PR. Post the returned facts in a PR conversation comment titled `Summary 1`, with the build commit so the reader can identify the diff. Use authenticated `gh` or the equivalent GitHub MCP conversation comment tool for PR comments. The comment ends with two Diagnostics blocks, `Build` (the window from step 1, since the build has no comment of its own) and `Summary 1`. Record the Summary 1 row in the checkpoint (written to the ledger with round 1) and verify that the comment was posted before starting review.
 
 ## 3. Review the current PR head
 
@@ -69,7 +69,7 @@ Run `fix-issues` in auto mode with the explicit findings list (even when empty) 
 
 Post one concise GitHub review with the round number, reviewed SHA, and check summary, ending with the round's Diagnostics (review, fixes, and posting prep; reply threads carry none). Use the `COMMENT` review event, since GitHub rejects approvals and change requests from the PR author. Set the GitHub review's commit ID (`commit_id` in the REST API) to the reviewed SHA when supported. Anchor findings inline on the reviewed diff where possible. Give the issue, impact, and disposition in one or two plain-language sentences for each finding. Cite its fix commit only after the push succeeds. For a finding the reviewer already published, reply with the outcome in the existing thread. When there is no usable thread, link to the existing finding and give its outcome in the review body. Put new findings in the review body when the tool cannot target the reviewed diff, there is no usable inline position, or GitHub rejects their anchors. For an empty round, post a brief clean result.
 
-Verify the review and any replies on GitHub, record their links in the checkpoint, and update the ledger row before advancing. If round 1 pushed fix commits, repeat steps 3–5 once against the updated PR head. Otherwise go to step 6. Keep both rounds' outcomes and note any work left for human review.
+Verify the review and any replies on GitHub, record their links in the checkpoint, and write the ledger (round 1 includes the Summary 1 row) before advancing. If round 1 pushed fix commits, repeat steps 3–5 once against the updated PR head. Otherwise go to step 6. Keep both rounds' outcomes and note any work left for human review.
 
 ## 6. Post the final handoff
 
@@ -81,13 +81,13 @@ Run the facts stage of `summarize-changes` again against the final published PR 
 - **Where to look first** — the suggested review order from the facts and the key files to start with.
 - **Diagnostics** — a table of each stage's models, tokens, and cost with the run total (the sum of the stages, which equals the usage report from the first start to now; if the run spanned sessions, use the sum), and a link to the ledger. Add the stage's own Diagnostics block.
 
-Use `None` for empty sections except Diagnostics. Update the ledger and verify publication, and keep the comment URL.
+Use `None` for empty sections except Diagnostics. Write the ledger with the Final handoff row and run total, verify publication, and keep the comment URL.
 
 ## 7. Mark the PR ready and notify
 
 After verifying the final handoff, confirm the open PR still points to the commit named in the handoff. If the head changed, report the mismatch and stop before changing the PR status.
 
-Unless the user asked to keep the PR in draft, mark it ready for review with authenticated `gh pr ready NUMBER` or the equivalent GitHub MCP operation. Skip the mutation if the PR is already ready. Verify the resulting status. If the transition fails, report the blocker and resume at this step when it is resolved. Record the Ready row in the ledger (outcome and time only).
+Unless the user asked to keep the PR in draft, mark it ready for review with authenticated `gh pr ready NUMBER` or the equivalent GitHub MCP operation. Skip the mutation if the PR is already ready. Verify the resulting status. If the transition fails, report the blocker and resume at this step when it is resolved. Then write the Ready row to the ledger (outcome and time only).
 
 Send the user the PR and final handoff links with the verified PR status and the run total (tokens and cost, or why unavailable), using a push notification if the harness offers one and a chat update otherwise. Stop here and wait for interactive follow-up.
 
