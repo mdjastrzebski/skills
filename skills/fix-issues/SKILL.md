@@ -2,7 +2,7 @@
 name: fix-issues
 description: Use when the user gives a list of issues, review findings, bug reports, or TODOs and asks to fix them, work through them, or "fix these issues" one by one. Also use when the user asks to "fix the PR comments", "address review comments/feedback", "fix comments on my PR", or "resolve the review"; the target is the PR given by number or URL, else the PR for the current branch. Triages and orders the list, then verifies and fixes each issue sequentially, with one commit per fixed issue on the current branch. Supports opt-in auto mode for unattended runs.
 metadata:
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
 # Fix Issues
@@ -25,26 +25,36 @@ Take the issues the user gave: a pasted list, code-review output, GitHub issue l
 
 Give each issue a short ID (`#1`, `#2`, ...) in the order the user gave them, and keep the user's wording. Split items that bundle several separate problems. Merge exact duplicates.
 
+For a GitHub issue link, read the issue with `gh issue view URL` when an authenticated `gh` is available. Otherwise, use the equivalent GitHub MCP issue reader (for example, `issue_read` with method `get`).
+
 ### From a GitHub PR
 
-Use when the user asks to fix PR review comments. Target the PR the user named (number or URL); otherwise the PR for the current branch:
+Use when the user asks to fix PR review comments. For each GitHub operation, prefer an authenticated `gh` when available. Otherwise, use the equivalent GitHub MCP tool. Target the PR the user named (number or URL), or find the open PR for the current branch:
 
 ```bash
 gh pr view [N] --json number,url,headRefName,baseRefName,author
 ```
 
-If `gh` is missing, unauthenticated, or finds no PR, say so and stop; suggest pasting the comments instead. Fetch the feedback (read-only), replacing `N`:
+With MCP, get PR metadata (for example, `pull_request_read` with method `get`). Resolve the repository from the supplied PR URL or the checkout's GitHub remote. For current-branch discovery, list open PRs by head owner and branch (for example, `list_pull_requests` with `state=open` and `head=OWNER:BRANCH`, or PR search with the same filters). Verify the head repository and branch. Keep the PR number, URL, author, base, and head. If you cannot identify or read the PR through either route, report what is missing and stop. In interactive mode, suggest pasting the comments.
+
+Fetch the feedback (read-only), replacing `N`:
 
 ```bash
 # Inline review threads (add `pageInfo{hasNextPage endCursor}` and page with `after:` if over 100)
 gh api graphql -F owner='{owner}' -F name='{repo}' -F number=N -f query='
 query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){
   reviewThreads(first:100){nodes{id isResolved isOutdated path line
-    comments(first:50){nodes{databaseId author{login __typename} body url}}}}}}}'
+    comments(first:50){nodes{databaseId author{login __typename} body url createdAt}}}}}}}'
 # Review bodies and PR conversation comments
 gh api repos/{owner}/{repo}/pulls/N/reviews --paginate
 gh api repos/{owner}/{repo}/issues/N/comments --paginate
 ```
+
+With MCP, use the equivalent operations below. Follow cursors or page numbers until all results are read.
+
+- List inline review threads (for example, `pull_request_read` with method `get_review_comments`). Use a thread reader that returns resolved and outdated state, comment bodies, authors, timestamps, file and line, links, and reply IDs.
+- List review submissions and their bodies (for example, `pull_request_read` with method `get_reviews`).
+- List PR conversation comments (for example, `pull_request_read` with method `get_comments`).
 
 Turn them into issues:
 
@@ -52,15 +62,15 @@ Turn them into issues:
 - **Review bodies and conversation comments:** include only non-empty ones that ask for a concrete change (reviews in state `COMMENTED` or `CHANGES_REQUESTED`). Split each into one issue per requested change.
 - **Review bots count as reviewers** (Copilot, CodeRabbit, Gemini Code Assist, Sourcery, Greptile, Cursor Bugbot, and the like). From a bot's review body or conversation comment, take only concrete, code-specific requests (such as CodeRabbit's actionable and nitpick items). Skip walkthroughs, PR summaries, diagrams, and "review skipped/paused" notices.
 - **Exclude entirely:** non-review automation (CI/status, codecov, vercel/netlify previews, changesets, dependabot/renovate, and similar), resolved threads, approvals with no actionable text, and comments by the PR author. Replies inside a thread are context for that thread, not separate issues.
-- **Auto mode, round 2:** skip inline threads whose latest comment is this skill's earlier reply (by the authenticated `gh api user` login) with no newer reviewer comment, and skip review bodies and conversation comments older than the round-1 summary comment (`Fix issues — round 1`). They were handled in round 1.
+- **Auto mode, round 2:** identify the authenticated GitHub login with `gh api user` or the equivalent MCP account lookup (for example, `get_me`). Skip inline threads whose latest comment is this skill's earlier reply from that account. When that account posted a round-1 summary (`Fix issues — round 1`), skip review bodies and conversation comments older than the summary. If the account lookup is unavailable, report that prior handling could not be verified and keep the feedback eligible.
 - If nothing is left, say so and stop in interactive mode. In auto mode, continue to Steps 6–7 with an empty plan and any skipped-outdated threads so the PR still records the round.
 
-Write each PR issue as: the comment text verbatim (keep any ```suggestion block or proposed diff), `file:line` for inline threads, the reviewer login, and the thread or comment URL. Append later replies in a thread as context. Record its source (thread node `id`, or comment/review URL) for Step 7.
+Write each PR issue as: the comment text verbatim (keep any ```suggestion block or proposed diff), `file:line` for inline threads, the reviewer login, and the thread or comment URL. Append later replies in a thread as context. For inline replies, keep both the thread node ID and the top-level inline comment's numeric ID (`databaseId` or the number in its `#discussion_r…` link), when available. For other items, keep the comment or review URL.
 
 ## 2. Preflight
 
 - Note the current branch. Commit to it. Do not create or switch branches, and push only in Step 7.
-- For a PR run: if the PR's `headRefName` is not the current branch, stop and tell the user both branch names.
+- For a PR run: if the PR's head branch (`headRefName` from `gh`, `head.ref` from MCP) is not the current branch, stop and tell the user both branch names.
 - Check `git status`. If there are uncommitted changes, ask the user whether to commit, stash, or stop in interactive mode. In auto mode, report the dirty working tree and stop. Keep existing changes out of issue commits.
 - Find the repo's fast checks (lint, typecheck, relevant tests) and its commit message style (`git log --oneline -20`). Pass both to every issue worker.
 
@@ -145,10 +155,13 @@ Then one line with counts: fixed, partial, skipped (already fixed, invalid, not 
 In interactive mode, run this step only when an issue came from a PR: ask the user once, "Push and reply on N threads/comments?", and do nothing without an explicit yes. If they decline, stop; the summary links let them reply manually. In auto mode, run it whenever a PR was the review source, without asking. For pasted-list runs without a PR source, finish in Step 6.
 
 1. `git push` the current branch (the one push this skill makes). In auto mode, skip the push if this round created no commits. If the push fails, report it and stop before posting replies that cite unpublished commits.
-2. Reply to each inline thread, once per thread:
+2. Reply to each inline thread once. When an authenticated `gh` is available, use the thread node ID, or, if you only have the top-level inline comment's numeric ID, the REST replies endpoint:
    ```bash
    gh api graphql -f query='mutation($id:ID!,$body:String!){addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$id,body:$body}){comment{url}}}' -f id=THREAD_ID -f body='...'
+   gh api repos/{owner}/{repo}/pulls/N/comments/COMMENT_ID/replies -f body='...'
    ```
-3. Post one PR conversation comment with `gh pr comment N --body '...'`. In interactive mode, post only when there are review-body or conversation items and list their outcomes. In auto mode, post the Step 6 summary for the round, limited to items whose source is the PR (never pasted-list items), including those outcomes. If any replies or the summary fail to post, report which GitHub operations failed.
+
+   Otherwise, use the equivalent GitHub MCP inline reply tool (for example, `add_reply_to_pull_request_comment`). Supply the repository, PR number, body, and the numeric ID of the top-level inline comment, not the thread node ID.
+3. Post one PR conversation comment with `gh pr comment N --body '...'` when an authenticated `gh` is available. Otherwise, use the equivalent GitHub MCP conversation comment tool (for example, `add_issue_comment`) with the PR number and comment body. In interactive mode, post only when there are review-body or conversation items and list their outcomes. In auto mode, post the Step 6 summary for the round, limited to items sourced from the PR. If any replies or the summary fail to post, report which GitHub operations failed.
 
 Reply text: `Fixed in <sha>` for fixed issues (plus a short note for PARTIAL); the verdict and reason for other verdicts; "not addressed in this pass" for `SKIPPED_BY_USER`; the verdict and reason for `DEFERRED`. Do not resolve threads; leave that to the reviewer.
