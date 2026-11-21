@@ -30,7 +30,7 @@ For more on the CLI, see:
 
 ## Factory Workflow
 
-`factory` runs a feature idea or an owner-labeled GitHub issue end to end. In another GitHub repo, use [`setup-factory`](#setup) to check readiness and install the project bundle. To install the runtime skills directly, install them together.
+`factory` runs a feature idea or an owner-labeled GitHub issue end to end. To install the runtime skills in a repo or locally, install them together.
 
 ```bash
 npx skills add https://github.com/mdjastrzebski/skills --skill factory diagnose-issue implement-idea summarize-changes fix-issues fix-issue
@@ -56,17 +56,22 @@ factory                  # orchestrates the run, posts the handoff, marks the PR
 | `fix-issues` | Work through a list of issues, or the unresolved review comments on a GitHub PR, one by one: triage and order them (bugs first, then by severity), verify and fix each one or explain the verdict, commit each fix separately on the current branch, and summarize the results. For PR comments, interactive mode asks before fixing and before pushing and replying. Opt-in auto mode handles bugs and medium-or-higher improvements without prompts, defers low-severity improvements, and posts a round summary. | `npx skills add https://github.com/mdjastrzebski/skills --skill fix-issues` |
 | `fix-issue` | Verify one reported issue or review finding, make the smallest warranted fix, and report the verdict and checks. | `npx skills add https://github.com/mdjastrzebski/skills --skill fix-issue` |
 
+### Cloud sessions
+
+In Claude Code or Codex cloud environments, install the skills at user scope in every fresh container from the environment's setup script. The target repo then carries no Factory files, and skill updates reach the next session.
+
+```bash
+git clone --depth 1 https://github.com/mdjastrzebski/skills /opt/agent-skills
+/opt/agent-skills/scripts/link-skills.sh
+```
+
+This links every skill into `~/.agents/skills` (Codex and other agents) and `~/.claude/skills` (Claude Code). Add it alongside the repo's own dependency install. To pin a release, add `--branch <tag>` to the clone; for a specific commit, clone without `--depth 1` and run `git -C /opt/agent-skills checkout <sha>`.
+
+Factory publishes PRs, comments, and reviews, so the session needs GitHub write access to the target repo. Claude Code cloud provides it through its GitHub integration; on Codex cloud it depends on the environment's internet access and credential settings.
+
 ## Other Skills
 
 Standalone skills that are not part of the factory workflow.
-
-### Setup
-
-| Skill | Summary | Install |
-| --- | --- | --- |
-| `setup-factory` | Check GitHub repo readiness and install Factory's project bundle. Supports optional issue intake and a draft setup PR. | `npx skills add https://github.com/mdjastrzebski/skills --skill setup-factory` |
-
-Add `--global` to install the setup skill once for use across checkouts. Open a fresh agent session in the target repo and invoke the skill (`/setup-factory` in Claude Code, `$setup-factory` in Codex). Add `check` for a read-only report, or run it without arguments to install the runtime skills and fill any repo-specific instruction gaps. Ask for a draft setup PR if you want to share the portable changes with the team. Label creation requires a separate request.
 
 ### Understand
 
