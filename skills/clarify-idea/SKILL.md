@@ -20,7 +20,7 @@ Any material change after approval needs fresh approval.
 
 Before the first question, read enough of the codebase to avoid asking what the code already answers: where the change would live, existing patterns it should follow, how tests and the dev loop work (`AGENTS.md`, `CLAUDE.md`, `README`, package scripts). Never ask the user something you can look up.
 
-Then decide whether the idea is clear: list the open decisions that would change behavior, scope, or acceptance checks and that the code does not settle. If there are none, skip phase 2 and go to phase 3, recording the routine choices as assumptions. Otherwise grill in phase 2, whether the user asked only for a spec or also for the build.
+Then decide whether the idea is clear: list the open decisions that would change behavior, scope, or acceptance checks and that the code does not settle. If there are none, skip phase 2 and go to phase 3, recording the routine choices as assumptions. The summary and approval in phase 4 still apply. Otherwise grill in phase 2, whether the user asked only for a spec or also for the build.
 
 ### Validate a supplied spec
 
