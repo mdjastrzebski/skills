@@ -1,12 +1,6 @@
 # Changelog
 
-## 0.7.0 (2026-11-21)
-
-- Split the build stage: `clarify-idea` produces the approved spec and build estimate, and `implement-spec` builds it in a subagent at the recommended model and effort. The ledger records a separate Spec stage for idea and supplied spec inputs, and the Build outcome names the builder's model and effort.
-- When `implement-spec` stops for fresh approval (unapproved input, a material deviation, or a reproduction that no longer fails), reopen spec or diagnosis approval and record the stage in the ledger. Recheck a reproduction mismatch on the build base before asking for approval of a revised fix plan. Rerun the build after the user approves the updated plan.
-- Record stopped and reopened Build, Spec, and Diagnosis stages in the ledger and Summary 1, and on the issue path fold a build's proposed change into the fix plan before asking for fresh approval.
-
-## 0.6.0 (2026-11-21)
+## 0.8.0 (2026-11-21)
 
 - Give the reviewer the repo's review guidance (root `REVIEW.md`, else `AGENTS.md` or `CLAUDE.md`), prefer a reviewer separate from the build, tag pre-existing findings, and name the reviewer and guidance in each round review.
 - Round 2 reviews only the fix commits from round 1, with the full diff as context. Pre-existing findings are not fixed in the PR; the handoff lists them under Follow-ups.
@@ -15,6 +9,12 @@
 - Round 2 tags a finding as pre-existing only when the PR's merge base already had the problem. A problem the PR introduced that round 1 missed stays a normal finding, marked missed by round 1, instead of becoming a follow-up.
 - Use the harness reviewer only when it can take the brief and the review guidance; otherwise use a fresh review subagent given them, so the repo's guidance always reaches the reviewer.
 - The reviewer rates each finding `important` or `nit`, and Factory passes the rating to `fix-issues` so findings rated important are verified and fixed rather than deferred.
+
+## 0.7.0 (2026-11-21)
+
+- Split the build stage: `clarify-idea` produces the approved spec and build estimate, and `implement-spec` builds it in a subagent at the recommended model and effort. The ledger records a separate Spec stage for idea and supplied spec inputs, and the Build outcome names the builder's model and effort.
+- When `implement-spec` stops for fresh approval (unapproved input, a material deviation, or a reproduction that no longer fails), reopen spec or diagnosis approval and record the stage in the ledger. Recheck a reproduction mismatch on the build base before asking for approval of a revised fix plan. Rerun the build after the user approves the updated plan.
+- Record stopped and reopened Build, Spec, and Diagnosis stages in the ledger and Summary 1, and on the issue path fold a build's proposed change into the fix plan before asking for fresh approval.
 
 ## 0.6.0 (2026-11-21)
 

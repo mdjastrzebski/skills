@@ -2,7 +2,7 @@
 name: factory
 description: Use when the user supplies a feature or change spec for implementation, or asks to run Factory on an idea, a GitHub issue, or an existing GitHub PR. PR input defaults to diagnosis in chat. Build and explicitly requested PR review runs continue through review, fixes, and handoff.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # Factory
