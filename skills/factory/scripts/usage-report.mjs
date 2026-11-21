@@ -86,7 +86,7 @@ function parseArgs(argv) {
     let value = m[2];
     if (value === undefined) {
       value = argv[++i];
-      if (value === undefined) throw new UsageError(`--${m[1]} needs a value`);
+      if (value === undefined || value.startsWith("--")) throw new UsageError(`--${m[1]} needs a value`);
     }
     if (m[1] === "transcript") opts.transcripts.push(value);
     else opts[m[1].replace(/-(.)/g, (_, c) => c.toUpperCase())] = value;
