@@ -52,6 +52,7 @@ Turn them into issues:
 - **Review bodies and conversation comments:** include only non-empty ones that ask for a concrete change (reviews in state `COMMENTED` or `CHANGES_REQUESTED`). Split each into one issue per requested change.
 - **Review bots count as reviewers** (Copilot, CodeRabbit, Gemini Code Assist, Sourcery, Greptile, Cursor Bugbot, and the like). From a bot's review body or conversation comment, take only concrete, code-specific requests (such as CodeRabbit's actionable and nitpick items). Skip walkthroughs, PR summaries, diagrams, and "review skipped/paused" notices.
 - **Exclude entirely:** non-review automation (CI/status, codecov, vercel/netlify previews, changesets, dependabot/renovate, and similar), resolved threads, approvals with no actionable text, and comments by the PR author. Replies inside a thread are context for that thread, not separate issues.
+- **Auto mode, round 2:** skip inline threads whose latest comment is this skill's earlier reply (by the authenticated `gh api user` login) with no newer reviewer comment, and skip review bodies and conversation comments older than the round-1 summary comment (`Fix issues — round 1`). They were handled in round 1.
 - If nothing is left, say so and stop in interactive mode. In auto mode, continue to Steps 6–7 with an empty plan and any skipped-outdated threads so the PR still records the round.
 
 Write each PR issue as: the comment text verbatim (keep any ```suggestion block or proposed diff), `file:line` for inline threads, the reviewer login, and the thread or comment URL. Append later replies in a thread as context. Record its source (thread node `id`, or comment/review URL) for Step 7.
@@ -76,7 +77,7 @@ Order:
 2. Within each kind, higher severity first.
 3. Ties: issues that others depend on first, then smaller blast radius first.
 
-**Auto mode:** use the same order and print the plan. For PR items include the reviewer, requested change, and source. Dispatch all bugs and improvements of medium severity or higher for verification. Record low-severity improvements as `DEFERRED` with the reason. Skip verification and commits for deferred items.
+**Auto mode:** use the same order and print the plan as the `ID | kind | severity | one-line issue` table, adding an `Action` column (`dispatch` or `DEFERRED`) and, for PR items, `Reviewer`, `About`, and `Source` columns. Dispatch all bugs and improvements of medium severity or higher for verification. Record low-severity improvements as `DEFERRED` with the reason. Skip verification and commits for deferred items.
 
 **Interactive pasted-list runs:** print the ordered plan as a short table (`ID | kind | severity | one-line issue`), then start dispatching without waiting for approval.
 
@@ -141,13 +142,13 @@ Then one line with counts: fixed, partial, skipped (already fixed, invalid, not 
 
 ## 7. Reply on the PR
 
-In interactive mode, run this step only when an issue came from a PR and the user explicitly accepts the offer to push and reply. In auto mode, run it whenever a PR was the review source, without asking. For pasted-list runs without a PR source, finish in Step 6.
+In interactive mode, run this step only when an issue came from a PR: ask the user once, "Push and reply on N threads/comments?", and do nothing without an explicit yes. If they decline, stop; the summary links let them reply manually. In auto mode, run it whenever a PR was the review source, without asking. For pasted-list runs without a PR source, finish in Step 6.
 
 1. `git push` the current branch (the one push this skill makes). In auto mode, skip the push if this round created no commits. If the push fails, report it and stop before posting replies that cite unpublished commits.
 2. Reply to each inline thread, once per thread:
    ```bash
    gh api graphql -f query='mutation($id:ID!,$body:String!){addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$id,body:$body}){comment{url}}}' -f id=THREAD_ID -f body='...'
    ```
-3. Post one PR conversation comment with `gh pr comment N --body '...'`. In interactive mode, post only when there are review-body or conversation items and list their outcomes. In auto mode, post the Step 6 summary for the entire round, including those outcomes. If any replies or the summary fail to post, report which GitHub operations failed.
+3. Post one PR conversation comment with `gh pr comment N --body '...'`. In interactive mode, post only when there are review-body or conversation items and list their outcomes. In auto mode, post the Step 6 summary for the round, limited to items whose source is the PR (never pasted-list items), including those outcomes. If any replies or the summary fail to post, report which GitHub operations failed.
 
 Reply text: `Fixed in <sha>` for fixed issues (plus a short note for PARTIAL); the verdict and reason for other verdicts; "not addressed in this pass" for `SKIPPED_BY_USER`; the verdict and reason for `DEFERRED`. Do not resolve threads; leave that to the reviewer.
