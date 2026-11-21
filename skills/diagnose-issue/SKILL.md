@@ -18,14 +18,14 @@ Accept a GitHub issue, a candidate fix PR, or both, by URL or repository-qualifi
 - Pin the caller's target base when supplied. Otherwise use the PR's merge base for a candidate comparison or the issue repository's default branch for issue-only diagnosis. Record the base ref and SHA, the baseline SHA actually tested, and the candidate head ref and SHA when applicable. Use clean isolated checkouts and scratch space for diagnostics so the user's changes stay intact.
 - Record the expected and actual behavior, prerequisites, and versions. Check the repo's guidance, related tests, documented behavior, and relevant history.
 
-For example, query issue links by the PR's base repository and number:
+Query issue links by the PR's base repository and number. GitHub includes manually linked issues by default.
 
 ```bash
 gh api graphql --paginate -f owner=OWNER -f name=REPO -F number=NUMBER -f query='
 query($owner: String!, $name: String!, $number: Int!, $endCursor: String) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $number) {
-      closingIssuesReferences(first: 100, after: $endCursor, includeClosedIssues: true) {
+      closingIssuesReferences(first: 100, after: $endCursor) {
         nodes { url }
         pageInfo { hasNextPage endCursor }
       }
