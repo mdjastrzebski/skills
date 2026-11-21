@@ -11,7 +11,10 @@
  *   --harness     transcript format; auto (default) picks the harness with a transcript for the
  *                 cwd, the most recently modified if both
  *   --since/until only count records whose timestamp is in the half-open window [since, until), so
- *                 adjacent windows (one stage's --until = the next one's --since) never double count
+ *                 adjacent windows (one stage's --until = the next one's --since) never double count.
+ *                 Give ISO 8601 with an explicit offset (Z or ±HH:MM, e.g. 2026-11-21T10:00:00Z) or
+ *                 a date only (UTC). A date-time without an offset is rejected (exit 2), since it
+ *                 would be read as machine-local time while transcript timestamps are UTC
  *   --session-id  use that session instead of the newest one for the cwd. Always pass it when
  *                 several sessions may share the cwd; without it, another session's usage inside
  *                 the window adds a format_warnings entry
@@ -71,6 +74,9 @@ const BUILTIN_PRICES = {
 const FAST_SUFFIX = " (fast)";
 const TOKEN_FIELDS = ["input", "output", "cache_read", "cache_write_5m", "cache_write_1h"];
 
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+const HAS_OFFSET = /(?:[zZ]|[+-]\d{2}(?::?\d{2})?)$/;
+
 class UsageError extends Error {}
 
 function parseArgs(argv) {
@@ -97,7 +103,12 @@ function parseArgs(argv) {
   }
   for (const key of ["since", "until"]) {
     if (opts[key] === undefined) continue;
-    if (Number.isNaN(Date.parse(opts[key]))) throw new UsageError(`--${key} is not a valid ISO 8601 time: ${opts[key]}`);
+    const v = opts[key];
+    if (Number.isNaN(Date.parse(v))) throw new UsageError(`--${key} is not a valid ISO 8601 time: ${v}`);
+    // Date.parse reads a date-time without an offset as machine-local time; require UTC or an explicit offset.
+    if (!DATE_ONLY.test(v) && !HAS_OFFSET.test(v)) {
+      throw new UsageError(`--${key} needs a UTC offset (Z or ±HH:MM, e.g. 2026-11-21T10:00:00Z) or a date only: ${v}`);
+    }
   }
   return opts;
 }
