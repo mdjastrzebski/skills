@@ -12,7 +12,7 @@ Turn a rough idea into an approved spec or validate a spec supplied by Factory, 
 ## Mode
 
 - **Interactive (default):** follow phases 1–5.
-- **Pipeline:** publish a draft PR and return the build result to the caller. For a rough idea, follow the usual spec approval gate. Ground the idea as usual, resolve routine questions as stated assumptions, and ask only about choices that affect the build. If the caller provides the full spec, its summary, and explicit user approval of that version, resume at phase 4. If Factory passes a user-supplied spec for implementation, follow [Validate a supplied spec](#validate-a-supplied-spec). Any material change after the spec is accepted for implementation needs fresh approval.
+- **Pipeline:** publish a draft PR and return the build result to the caller. For a rough idea, follow the usual spec approval gate. Ground the idea as usual, resolve routine questions as stated assumptions, and ask only about a choice that prevents a viable spec. If the caller provides the full spec, its summary, and explicit user approval of that version, resume at phase 4. If Factory passes a user-supplied spec for implementation, follow [Validate a supplied spec](#validate-a-supplied-spec). Any material change after the spec is accepted for implementation needs fresh approval.
 
 ## 1. Ground yourself first
 
