@@ -28,6 +28,12 @@ for project in .claude .agents; do
     status=1
     continue
   fi
+  if { [ -e "$project" ] && [ ! -d "$project" ]; } ||
+    { [ -e "$dir" ] && [ ! -d "$dir" ]; }; then
+    echo "skip $dir is not a directory" >&2
+    status=1
+    continue
+  fi
   if ! "$check"; then
     mkdir -p "$dir"
   fi
