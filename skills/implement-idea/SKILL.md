@@ -7,7 +7,7 @@ metadata:
 
 # Implement Idea
 
-Turn a rough idea into an approved spec, or validate a spec supplied by Factory and get it approved, then hand it to a subagent to build and deliver.
+Turn a rough idea into an approved spec, or validate a spec supplied by Factory and get it approved, then hand it to a subagent to build and deliver. Do not write code yourself.
 
 ## Mode
 
