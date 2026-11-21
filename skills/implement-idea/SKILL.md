@@ -1,13 +1,13 @@
 ---
 name: implement-idea
-description: Use when the user brings a rough idea for a feature, fix, refactor, or other change and wants it turned into a spec and built, or says "implement this idea", "I have an idea for…", "grill me on this, then build it". Gets the spec approved, then delegates the build. Use pipeline mode when factory invokes the skill or the user explicitly requests it.
+description: Use when the user brings a rough idea for a feature, fix, refactor, or other change and wants it turned into a spec and built, or says "implement this idea", "I have an idea for…", "grill me on this, then build it". Gets the spec approved, then delegates the build. Use pipeline mode when `factory` invokes the skill or the user explicitly requests it.
 metadata:
   version: "0.2.0"
 ---
 
 # Implement Idea
 
-Turn a rough idea into an approved spec, then hand it to a subagent to build. Four phases, in order: research, grill, approve, delegate. Do not write code yourself.
+Turn a rough idea into an approved spec, then hand it to a subagent to build. Five phases, in order: research, grill, approve, delegate, deliver. Do not write code yourself.
 
 ## Mode
 
@@ -81,6 +81,8 @@ Pick the subagent's model and reasoning effort from the spec's difficulty. Spend
 
 When in doubt between two tiers, pick the higher one. If the agent has no subagent support, implement it yourself following the same brief.
 
+In pipeline mode, do step 1 of [Pipeline delivery](#pipeline-delivery) first, so the build happens on the new branch.
+
 Give the subagent a self-contained brief — it does not see this conversation:
 
 - the approved full spec, verbatim — everything in the summary, plus what the subagent needs to build without guessing:
@@ -91,6 +93,7 @@ Give the subagent a self-contained brief — it does not see this conversation:
   - acceptance criteria as testable checks, and which tests to add
 - the relevant files, patterns, and conventions you found in phase 1
 - how to run tests, lint, and typecheck, and the instruction to run them before finishing
+- in pipeline mode, the checkout path and branch to work in
 - constraints: stay within scope, do not commit or push unless the user asked, do not ask the user questions — make the reasonable call and report it
 - what to return: files changed, a summary of the change, any deviations from the spec and why, test results, and steps to try the feature manually
 
