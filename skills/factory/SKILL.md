@@ -1,19 +1,26 @@
 ---
 name: factory
-description: Use when the user asks to run factory on a feature idea, or to take an idea through spec approval, a draft PR, automated review and fix rounds, and a final handoff on the PR.
+description: Use when the user asks to run factory on a feature idea or an owner-labeled GitHub issue. Takes the work through spec or diagnosis approval, a draft PR, automated review and fix rounds, and a final handoff on the PR.
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # Factory
 
-Coordinate the pipeline. Use `implement-idea` for the build, `summarize-changes` for its facts, a reviewer for findings, and `fix-issues` for triage and fixes. Load companion skills from the harness or their canonical `skills/<name>/SKILL.md` in the same skills release. If a required skill or capability is unavailable, report the blocked stage and how to resume.
+Coordinate the pipeline. Use `diagnose-issue` for the diagnosis, `implement-idea` for the build, `summarize-changes` for its facts, a reviewer for findings, and `fix-issues` for triage and fixes. Load companion skills from the harness or their canonical `skills/<name>/SKILL.md` in the same skills release. If a required skill or capability is unavailable, report the blocked stage and how to resume.
 
-Factory invocation authorizes publishing the draft PR, pushing its fixes, and posting the pipeline's PR comments. After spec approval, proceed through handoff without routine user input. Keep the PR in draft for final human review.
+Factory invocation authorizes publishing the draft PR, pushing its fixes, and posting the pipeline's PR comments. After spec or diagnosis approval, proceed through handoff without routine user input. Keep the PR in draft for final human review.
 
 ## 1. Build from an idea
 
 Pass the idea and target repo to `implement-idea` in pipeline mode. Wait for explicit user approval of the spec inside that skill. Continue only after it returns a verified draft PR and build commit. Use its checkout and PR refs for the rest of the run.
+
+### Issue path
+
+1. Resolve the supplied GitHub issue and verify a current label was applied by the repository owner. Read the issue's labels and GitHub label events (for example, `gh api repos/OWNER/REPO/issues/NUMBER/events --paginate` or the equivalent GitHub MCP timeline reader). Use the most recent apply/remove event for that label. If the user specified a label, check that one. Verify the apply event's actor against the repository owner account or, for an organization, verified organization ownership. If the owner-applied label cannot be verified, stop before diagnosis and explain the missing evidence.
+2. Run `diagnose-issue`. Present the verdict, evidence, and proposed next step and wait for the user's explicit diagnosis approval. For `CONFIRMED`, offer the full fix plan with the summary for approval together. For any other verdict, stop at the approved diagnosis. Keep any drafted issue reply in chat unless the user explicitly approves posting it. Factory's PR authorization applies only to the PR.
+3. For an approved `CONFIRMED` diagnosis, pass the approved full plan and summary to `implement-idea` in pipeline mode as the approved spec, including the issue URL, baseline, and reproduction. Build from the diagnosed base and verify that the reproduction fails for the diagnosed reason before changing the implementation. If the base has moved and the diagnosis materially changes, return to diagnosis approval. Verify that the same reproduction passes with the fix. Use a plain issue link in the PR body.
+4. When `implement-idea` returns the draft PR and build commit, continue at step 2 below.
 
 ## 2. Post Summary 1
 
