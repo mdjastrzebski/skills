@@ -30,7 +30,7 @@ For more on the CLI, see:
 
 ## Factory Workflow
 
-`factory` takes a feature idea, a supplied implementation spec, or an owner-labeled GitHub issue through a draft PR, review, and handoff. Give Factory a spec to implement and it checks the spec against the codebase, shows a short summary of its scope, key decisions, and assumptions, asks about gaps that affect the build, and proceeds once you approve the spec.
+`factory` takes a feature idea, a supplied implementation spec, or a GitHub issue through a draft PR, review, and handoff. Give Factory a spec to implement and it checks the spec against the codebase, shows a short summary of its scope, key decisions, and assumptions, asks about gaps that affect the build, and proceeds once you approve the spec.
 
 Use `$factory PR #1966` or `$factory diagnose PR #1966` for an existing PR. Factory uses the linked issue or PR description, compares the base with the PR changes, and returns the diagnosis in chat. Request the review and fix pipeline explicitly to continue beyond diagnosis. To install the runtime skills in a repo or locally, install them together.
 
@@ -51,7 +51,7 @@ factory                  # orchestrates the run, posts the handoff, marks the PR
 
 | Skill | Summary | Install |
 | --- | --- | --- |
-| `factory` | Take a feature idea, supplied spec, or owner-labeled issue through a draft PR, review and fix rounds, and a final handoff. Diagnose existing PRs in chat by default. | `npx skills add https://github.com/mdjastrzebski/skills --skill factory` |
+| `factory` | Take a feature idea, supplied spec, or GitHub issue through a draft PR, review and fix rounds, and a final handoff. Diagnose existing PRs in chat by default. | `npx skills add https://github.com/mdjastrzebski/skills --skill factory` |
 | `diagnose-issue` | Diagnose a GitHub issue, verify a PR against its linked issue, or take both inputs explicitly. Compare the same reproduction on the baseline and PR head to verify the fix. | `npx skills add https://github.com/mdjastrzebski/skills --skill diagnose-issue` |
 | `implement-idea` | Turn a rough idea into an approved spec, or validate a supplied Factory spec and get it approved, then delegate the build. Pipeline mode publishes a draft PR and returns to the caller. | `npx skills add https://github.com/mdjastrzebski/skills --skill implement-idea` |
 | `summarize-changes` | Summarize a PR, a branch, or your current changes (default: current branch against the default branch, including uncommitted changes) at the level of approach: neutral facts first (big blocks, structural decisions, assumptions, plus a suggested review order and where line-level review matters most), then a skeptical evaluation from a fresh subagent. Large changes follow a separate procedure (classify files, collapse mechanical edits, summarize blocks in parallel), with coverage stating what was read. Not a line-level review; offers to post the result as a PR comment. | `npx skills add https://github.com/mdjastrzebski/skills --skill summarize-changes` |
