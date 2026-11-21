@@ -70,7 +70,7 @@ Write each PR issue as: the comment text verbatim (keep any ```suggestion block 
 ## 2. Preflight
 
 - Note the current branch. Commit to it. Do not create or switch branches, and push only in Step 7.
-- For a PR run: if the PR's `headRefName` is not the current branch, stop and tell the user both branch names.
+- For a PR run: if the PR's head branch (`headRefName` from `gh`, `head.ref` from MCP) is not the current branch, stop and tell the user both branch names.
 - Check `git status`. If there are uncommitted changes, ask the user whether to commit, stash, or stop in interactive mode. In auto mode, report the dirty working tree and stop. Keep existing changes out of issue commits.
 - Find the repo's fast checks (lint, typecheck, relevant tests) and its commit message style (`git log --oneline -20`). Pass both to every issue worker.
 
@@ -155,12 +155,13 @@ Then one line with counts: fixed, partial, skipped (already fixed, invalid, not 
 In interactive mode, run this step only when an issue came from a PR: ask the user once, "Push and reply on N threads/comments?", and do nothing without an explicit yes. If they decline, stop; the summary links let them reply manually. In auto mode, run it whenever a PR was the review source, without asking. For pasted-list runs without a PR source, finish in Step 6.
 
 1. `git push` the current branch (the one push this skill makes). In auto mode, skip the push if this round created no commits. If the push fails, report it and stop before posting replies that cite unpublished commits.
-2. Reply to each inline thread once. When an authenticated `gh` is available, use the thread node ID:
+2. Reply to each inline thread once. When an authenticated `gh` is available, use the thread node ID, or, if you only have the top-level inline comment's numeric ID, the REST replies endpoint:
    ```bash
    gh api graphql -f query='mutation($id:ID!,$body:String!){addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$id,body:$body}){comment{url}}}' -f id=THREAD_ID -f body='...'
+   gh api repos/{owner}/{repo}/pulls/N/comments/COMMENT_ID/replies -f body='...'
    ```
 
-   Otherwise, use the equivalent GitHub MCP inline reply tool (for example, `add_reply_to_pull_request_comment`). Supply the repository, PR number, body, and numeric ID of the top-level inline comment. If the tool accepts a thread node ID, use that ID.
+   Otherwise, use the equivalent GitHub MCP inline reply tool (for example, `add_reply_to_pull_request_comment`). Supply the repository, PR number, body, and the numeric ID of the top-level inline comment, not the thread node ID.
 3. Post one PR conversation comment with `gh pr comment N --body '...'` when an authenticated `gh` is available. Otherwise, use the equivalent GitHub MCP conversation comment tool (for example, `add_issue_comment`) with the PR number and comment body. In interactive mode, post only when there are review-body or conversation items and list their outcomes. In auto mode, post the Step 6 summary for the round, limited to items sourced from the PR. If any replies or the summary fail to post, report which GitHub operations failed.
 
 Reply text: `Fixed in <sha>` for fixed issues (plus a short note for PARTIAL); the verdict and reason for other verdicts; "not addressed in this pass" for `SKIPPED_BY_USER`; the verdict and reason for `DEFERRED`. Do not resolve threads; leave that to the reviewer.
