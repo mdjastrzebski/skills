@@ -12,6 +12,7 @@
 - Drop the owner-applied label check from the issue path: a user's Factory request selects the issue.
 - Return existing-PR diagnosis in chat by default. Run the PR review and fix pipeline on explicit request.
 - Give the reviewer the repo's review guidance (root `REVIEW.md`, else `AGENTS.md` or `CLAUDE.md`), prefer a reviewer separate from the build, tag pre-existing findings, and name the reviewer and guidance in each round review.
+- Round 2 reviews only the fix commits from round 1, with the full diff as context. Pre-existing findings are not fixed in the PR; the handoff lists them under Follow-ups.
 
 ## 0.5.0 (2026-11-21)
 

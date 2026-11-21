@@ -2,7 +2,7 @@
 name: fix-issues
 description: Use when the user gives a list of issues, review findings, bug reports, or TODOs and asks to fix them, work through them, or "fix these issues" one by one. Also use when the user asks to "fix the PR comments", "address review comments/feedback", "fix comments on my PR", or "resolve the review"; the target is the PR given by number or URL, else the PR for the current branch. Triages and orders the list, then verifies and fixes each issue sequentially, with one commit per fixed issue on the current branch. Supports opt-in auto mode for unattended runs.
 metadata:
-  version: "0.5.0"
+  version: "0.6.0"
 ---
 
 # Fix Issues
@@ -89,7 +89,7 @@ Order:
 2. Within each kind, higher severity first.
 3. Ties: issues that others depend on first, then smaller blast radius first.
 
-**Auto mode:** use the same order and print the plan as the `ID | kind | severity | one-line issue` table, adding an `Action` column (`dispatch` or `DEFERRED`) and, for PR items, `Reviewer`, `About`, and `Source` columns. Dispatch all bugs and improvements of medium severity or higher for verification. Record low-severity improvements as `DEFERRED` with the reason. Skip verification and commits for deferred items.
+**Auto mode:** use the same order and print the plan as the `ID | kind | severity | one-line issue` table, adding an `Action` column (`dispatch`, `DEFERRED`, or `FOLLOW_UP`) and, for PR items, `Reviewer`, `About`, and `Source` columns. Dispatch all bugs and improvements of medium severity or higher for verification. Record low-severity improvements as `DEFERRED` with the reason. When the caller tags a finding as pre-existing (not introduced by the reviewed change), record it as `FOLLOW_UP` instead of dispatching it, whatever its kind or severity, so the fix lands in a separate change. Skip verification and commits for deferred and follow-up items.
 
 **Interactive pasted-list runs:** print the ordered plan as a short table (`ID | kind | severity | one-line issue`), then start dispatching without waiting for approval.
 
@@ -148,9 +148,9 @@ After the last issue, print a concise summary in triage order. In auto mode, tit
 | #2 | NOT_WORTH_FIXING | — | why |
 ```
 
-For PR runs, add a `Source` column (comment link or `file:line`). Include any skipped-outdated threads, `SKIPPED_BY_USER` items, and `DEFERRED` items. If there are no actionable items, say so.
+For PR runs, add a `Source` column (comment link or `file:line`). Include any skipped-outdated threads, `SKIPPED_BY_USER` items, `DEFERRED` items, and `FOLLOW_UP` items. If there are no actionable items, say so.
 
-Then one line with counts: fixed, partial, skipped (already fixed, invalid, not worth fixing, by user), deferred (auto mode), failed. List failed issues with the reason so the user can follow up.
+Then one line with counts: fixed, partial, skipped (already fixed, invalid, not worth fixing, by user), deferred and follow-up (auto mode), failed. List failed issues with the reason so the user can follow up.
 
 ## 7. Reply on the PR
 
@@ -166,4 +166,4 @@ In interactive mode, run this step only when an issue came from a PR: ask the us
    Otherwise, use the equivalent GitHub MCP inline reply tool (for example, `add_reply_to_pull_request_comment`). Supply the repository, PR number, body, and the numeric ID of the top-level inline comment, not the thread node ID.
 3. Post one PR conversation comment with `gh pr comment N --body '...'` when an authenticated `gh` is available. Otherwise, use the equivalent GitHub MCP conversation comment tool (for example, `add_issue_comment`) with the PR number and comment body. In interactive mode, post only when there are review-body or conversation items and list their outcomes. In auto mode, post the Step 6 summary for the round, limited to items sourced from the PR. If any replies or the summary fail to post, report which GitHub operations failed.
 
-Reply text: `Fixed in <sha>` for fixed issues (plus a short note for PARTIAL); the verdict and reason for other verdicts; "not addressed in this pass" for `SKIPPED_BY_USER`; the verdict and reason for `DEFERRED`. Do not resolve threads; leave that to the reviewer.
+Reply text: `Fixed in <sha>` for fixed issues (plus a short note for PARTIAL); the verdict and reason for other verdicts; "not addressed in this pass" for `SKIPPED_BY_USER`; the verdict and reason for `DEFERRED`; "pre-existing, left for a follow-up change" for `FOLLOW_UP`. Do not resolve threads; leave that to the reviewer.
