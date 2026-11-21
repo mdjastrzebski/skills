@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0 (2026-11-21)
+
+- Split the build stage: `clarify-idea` produces the approved spec and build estimate, and `implement-spec` builds it in a subagent at the recommended model and effort. The ledger records a separate Spec stage for idea and supplied spec inputs, and the Build outcome names the builder's model and effort.
+- When `implement-spec` stops for fresh approval (unapproved input, a material deviation, or a reproduction that no longer fails), reopen spec or diagnosis approval and record the stage in the ledger. Recheck a reproduction mismatch on the build base before asking for approval of a revised fix plan. Rerun the build after the user approves the updated plan.
+- Record stopped and reopened Build, Spec, and Diagnosis stages in the ledger and Summary 1, and on the issue path fold a build's proposed change into the fix plan before asking for fresh approval.
+
 ## 0.6.0 (2026-11-21)
 
 - Validate supplied implementation specs, show a short spec summary, clarify gaps that affect the build, and continue through the build pipeline after the user approves the spec.

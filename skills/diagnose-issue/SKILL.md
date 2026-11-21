@@ -2,7 +2,7 @@
 name: diagnose-issue
 description: Use when the user asks to diagnose, reproduce, or triage a GitHub issue, verify that a GitHub pull request fixes a reported problem, or when factory sends an issue, a PR, or both for diagnosis.
 metadata:
-  version: "0.3.0"
+  version: "0.3.1"
 ---
 
 # Diagnose Issue
@@ -64,6 +64,6 @@ For Factory's existing PR diagnosis, if the conclusion depends on a setup whose 
 | `NOT_A_BUG` | Evidence shows the behavior is expected or already correct on the target base. Cite what establishes that and draft a reply explaining it. |
 | `WONT_FIX` | Evidence supports the report, and a documented scope, cost, compatibility, or ownership reason makes a fix unwarranted. State the reason and draft a reply explaining it. |
 
-Return the report source, diagnosis verdict, behavior, baseline, reproduction and result, root cause or evidence, and next step. For a PR, also return its URL, pinned refs and SHAs, verification verdict, checks, and remaining gaps. For a `CONFIRMED` report without a candidate PR, return a concise summary and a full fix plan suitable for approval and handoff to `implement-idea`. Each fix plan starts by adding or copying the reproduction and running it on the unchanged implementation, then making the fix and rerunning the reproduction and relevant checks. Include enough detail to rebuild the reproduction without access to a scratch file.
+Return the report source, diagnosis verdict, behavior, baseline, reproduction and result, root cause or evidence, and next step. For a PR, also return its URL, pinned refs and SHAs, verification verdict, checks, and remaining gaps. For a `CONFIRMED` report without a candidate PR, return a concise summary and a full fix plan suitable for approval and handoff to `implement-spec`. Each fix plan starts by adding or copying the reproduction and running it on the unchanged implementation, then making the fix and rerunning the reproduction and relevant checks. Include enough detail to rebuild the reproduction without access to a scratch file.
 
 Return the diagnosis to the caller in factory mode or present it in chat in standalone mode. Keep any reply in draft form until the user explicitly approves posting that reply to the source issue. Diagnosis approval alone authorizes no issue comment or other issue mutation. After approval, post exactly the approved reply with authenticated `gh issue comment` or the equivalent GitHub MCP tool, and verify that it was posted.
