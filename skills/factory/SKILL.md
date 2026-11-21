@@ -99,7 +99,7 @@ Run `summarize-changes` through its facts stage against the target PR. Post the 
 
 ## 3. Review the current PR head
 
-Record the current PR comparison. On the existing PR path, apply the refresh rule in step 1 if the comparison changed unexpectedly. Use the harness reviewer (for example, `code-review`) when available, then a fresh review subagent, then direct diff review if neither is available. Prefer a reviewer with a context separate from the build. If only the building agent can review, say so in the round review.
+Record the current PR comparison. On the existing PR path, apply the refresh rule in step 1 if the comparison changed unexpectedly. Use the harness reviewer (for example, `code-review`) only when it can take the brief and guidance below; otherwise use a fresh review subagent given them, then direct diff review if neither is available. Prefer a reviewer with a context separate from the build. If only the building agent can review, say so in the round review.
 
 Resolve the repo's review guidance at the reviewed head: the root `REVIEW.md` when present, otherwise the repo's agent instructions (`AGENTS.md`, `CLAUDE.md`). Give the reviewer the approved spec, PR URL, comparison, available reproduction evidence, the guidance paths, and this brief:
 
