@@ -1,6 +1,6 @@
 ---
 name: diagnose-issue
-description: Use when the user asks to diagnose, reproduce, or triage a GitHub issue, verify that a GitHub pull request fixes a reported problem, or gives factory an issue, a PR, or both for diagnosis.
+description: Use when the user asks to diagnose, reproduce, or triage a GitHub issue, verify that a GitHub pull request fixes a reported problem, or when factory sends an issue, a PR, or both for diagnosis.
 metadata:
   version: "0.2.0"
 ---
