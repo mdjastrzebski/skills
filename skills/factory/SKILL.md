@@ -38,6 +38,8 @@ Wait for evidence that the exact diff was reviewed before proceeding. If the rev
 
 ## 4. Fix the findings
 
+Before passing a nonempty findings list to `fix-issues`, resolve the PR's head repository and branch and confirm that the current PR head still matches the reviewed SHA. Prepare and verify a clean checkout on that branch at the reviewed SHA, preserving any existing edits and local commits. If the PR head moved or the exact checkout cannot be prepared safely, record the findings, report the blocker, and stop before dispatching fixes. If the PR head moved, resume at step 3 to review the new head.
+
 Run `fix-issues` in auto mode with the explicit findings list (even when empty) and the round number. Use its pasted-list workflow, which delegates verification and repair to `fix-issue` and leaves publication to Factory. Capture the verdicts, reasons, checks, and fix commits. Push verified fix commits to the PR head branch before citing them. If the push fails or the fix skill cannot complete the round, record the blocker and resume here when it is resolved. Individual failed or deferred findings go in the handoff.
 
 ## 5. Post the round review
