@@ -2,7 +2,7 @@
 name: diagnose-issue
 description: Use when the user asks to diagnose, reproduce, or triage a GitHub issue, verify that a GitHub pull request fixes a reported problem, or when factory sends an issue, a PR, or both for diagnosis.
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
 ---
 
 # Diagnose Issue
@@ -36,23 +36,26 @@ query($owner: String!, $name: String!, $number: Int!, $endCursor: String) {
 
 ## 2. Reproduce and trace
 
+- For Factory's existing PR diagnosis, first try the project's standard supported setup on the pinned PR base. If reproduction requires custom mocks or a different runner, record the deviation and check project guidance, test configuration, or CI for evidence of support. Mark observations from an unverified setup as provisional and continue to the candidate comparison when the same reproduction can run on both revisions.
 - Use the caller's reproduction or write the smallest failing test or script that exercises the reported behavior on the unmodified base. Use the existing test convention when practical. Record the command, inputs, expected result, and observed failure. Rule out setup failures, unrelated failures, and assumptions in the reproduction.
 - Trace the failure to the responsible code or configuration and cite the evidence. If it only occurs on a different version, say which version and what happens on the target base. When a reproduction cannot be established, record what was tried and what evidence is missing.
 - Save the reproduction source, relative destination, fixtures or setup, run command, and observed failure for the caller. Leave the target checkout clean. In standalone use, show where to find the artifacts.
 
 ## 3. Verify the candidate PR
 
-Run the same reproduction and expected-behavior assertion on the pinned head with equivalent inputs, fixtures, and setup. Keep the reproduction independent of changes to the PR's own tests. Trace how the diff affects the cause, run relevant regression checks, and record the commands, outcomes, and check failures for both revisions.
+Run the same reproduction and expected-behavior assertion on the pinned head with equivalent inputs, fixtures, and setup. For Factory's existing PR diagnosis, if the pinned head does not contain the pinned base, integrate that head into the pinned base in an isolated checkout and test the integrated revision. Record both SHAs and the integration tested. If integration conflicts or the comparison is blocked, report `INCONCLUSIVE` and explain the blocker. Keep the reproduction independent of changes to the PR's own tests. Trace how the diff affects the cause, run relevant regression checks, and record the commands, outcomes, and check failures for both revisions.
 
 | Verification verdict | Evidence |
 | --- | --- |
-| `VERIFIED` | The baseline reproduces the reported defect, the head passes the same check, and the diff accounts for the change. |
-| `NOT_FIXED` | The baseline reproduces the reported defect and the head still exhibits some or all of it. Include a reproduction-first plan for the gap on the PR branch. |
+| `VERIFIED` | The baseline reproduces the reported defect, the revision with the PR changes passes the same check, and the diff accounts for the change. |
+| `NOT_FIXED` | The baseline reproduces the reported defect and the revision with the PR changes still exhibits some or all of it. Include a reproduction-first plan for the gap on the PR branch. |
 | `INCONCLUSIVE` | The comparison cannot establish either outcome, for example when the baseline already passes, setup fails, or the head cannot be tested. State the missing evidence. |
 
 Re-read the current head before reporting verification. If it moved, name the tested SHA. For a caller-pinned SHA, return the result for that SHA and flag the move. Otherwise verify the new head when possible and report `INCONCLUSIVE` for the current head if it remains untested.
 
 ## 4. Return diagnosis and evidence
+
+For Factory's existing PR diagnosis, if the conclusion depends on a setup whose support could not be established, report `NEEDS_INFO` for the diagnosis and `INCONCLUSIVE` for verification. Include any provisional comparison results and state which evidence of support is missing.
 
 | Verdict | Evidence and next step |
 | --- | --- |

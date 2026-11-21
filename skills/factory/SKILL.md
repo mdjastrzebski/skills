@@ -1,15 +1,28 @@
 ---
 name: factory
-description: Use when the user asks to run factory on a feature idea, an owner-labeled GitHub issue, or an existing GitHub PR with or without its source issue. Gets approval, builds or verifies the fix, and runs review and fix rounds through the final handoff.
+description: Use when the user supplies a feature or change spec for implementation, or asks to run Factory on an idea, a GitHub issue, or an existing GitHub PR. PR input defaults to diagnosis in chat. Build and explicitly requested PR review runs continue through review, fixes, and handoff.
 metadata:
-  version: "0.5.0"
+  version: "0.6.0"
 ---
 
 # Factory
 
 Coordinate the pipeline. Use `diagnose-issue` for the diagnosis, `implement-idea` for the build, `summarize-changes` for its facts, a reviewer for findings, and `fix-issues` for triage and fixes. Load companion skills from the harness or their canonical `skills/<name>/SKILL.md` in the same skills release. If a required skill or capability is unavailable, report the blocked stage and how to resume.
 
-Factory invocation authorizes publishing a draft PR when building, pushing fixes to the target PR, posting the pipeline's PR comments, and marking the PR ready for review. After spec or diagnosis approval, proceed without routine user input. Keep draft PRs in draft through the internal review rounds and final handoff. Preserve an existing ready PR's status.
+## Select the path
+
+- `$factory PR #1966` and `$factory diagnose PR #1966` select [Existing PR diagnosis](#existing-pr-diagnosis). A PR URL works in either form. Resolve bare numbers in the target repository when unambiguous. If the user separately and explicitly requests the review and fix pipeline on an existing PR, use [Existing PR review](#existing-pr-review) and its approval gate.
+- An issue alone selects the [Issue path](#issue-path-without-a-pr).
+- A spec supplied for implementation selects the [Supplied spec path](#supplied-spec-path). A rough feature or change idea selects the [Idea path](#idea-path).
+
+## Existing PR diagnosis
+
+1. Resolve the PR and record its URL, base and head repositories, refs, and exact commit SHAs. Give `diagnose-issue` the PR, any issue the user specified, and both SHAs. Use the PR's recorded base SHA as the baseline. Have it use the linked issue as the bug report, or the PR description if the linked-issue lookup establishes there is none. This path uses the PR as the entry point even when the report comes from a linked issue.
+2. Run `diagnose-issue` in Factory mode using its existing-PR diagnosis instructions for the supported setup and comparison with the PR changes. Return the source report, baseline verdict, comparison result and tested revisions, setup and support evidence, what the patch changes, and proposed next step in chat. Stop after the diagnosis. Keep any checkpoint in task state or scratch space and leave the PR and issue untouched, including when resuming.
+
+## Build and review pipeline
+
+Factory build and explicit PR review requests authorize publishing a draft PR when building, pushing verified fixes as allowed by the selected path, posting pipeline comments and reviews, and marking the PR ready for review. Once the scope is approved under the selected path, proceed without routine user input. Keep draft PRs in draft through the internal review rounds and final handoff. Preserve an existing ready PR's status.
 
 ## Evidence trail
 
@@ -39,28 +52,31 @@ Make every stage auditable from the PR alone. Each stage publishes its own entry
 
 ## 1. Establish the target and approved scope
 
-Use the existing PR path whenever a PR is supplied, including when an issue is also supplied. Use the issue path for an issue alone and the idea path for a feature idea. Resolve GitHub targets by URL or repository-qualified number. Use repository context for unambiguous bare numbers.
+Use the build or review path selected above. Resolve GitHub targets by URL or repository-qualified number. Use repository context for unambiguous bare numbers.
 
 Identify each PR comparison by its head SHA, base ref, and effective merge-base SHA. Read the base ref and both commit SHAs from the same PR snapshot and compute the merge base from those commits. A base branch advance that leaves the merge base unchanged preserves the comparison.
 
 ### Idea path
 
-Pass the idea and target repo to `implement-idea` in pipeline mode. Wait for explicit user approval of the spec inside that skill. Continue only after it returns a verified draft PR and build commit. Use its checkout and PR refs for the rest of the run.
+Pass the idea and target repo to `implement-idea` in pipeline mode. Wait for explicit user approval of the spec inside that skill. Continue at [After the build](#after-the-build) when it returns a verified draft PR and build commit.
+
+### Supplied spec path
+
+Pass the user's spec and target repo to `implement-idea` in pipeline mode as a supplied spec for implementation. Have it validate the spec against the repo, show a short spec summary, ask one focused question at a time about any gaps that affect the build, and wait for explicit user approval of the resulting spec inside that skill. Record the approval in the checkpoint and the ledger's Build outcome. Continue at [After the build](#after-the-build) when the skill returns a verified draft PR and build commit.
 
 ### Issue path without a PR
 
-1. Resolve the supplied GitHub issue and verify a current label was applied by the repository owner. Read the issue's labels and GitHub label events (for example, `gh api repos/OWNER/REPO/issues/NUMBER/events --paginate` or the equivalent GitHub MCP timeline reader). If the user specified a label, check that one; otherwise check each current label. For each checked label, use its most recent `labeled`/`unlabeled` event: it must be `labeled`, and its actor must be the repository owner account or, for an organization-owned repository, an organization owner (for example, `gh api orgs/ORG/memberships/ACTOR` returns `role: admin`). If the owner-applied label cannot be verified, stop before diagnosis and explain the missing evidence.
-2. Run `diagnose-issue`. At the verdict, run the usage report for that window and keep it for the ledger. Present the verdict, evidence, and proposed next step and wait for the user's explicit diagnosis approval. For `CONFIRMED`, offer the full fix plan with the summary for approval together. For any other verdict, stop at the approved diagnosis. Keep any drafted issue reply in chat unless the user explicitly approves posting it. Factory's PR authorization applies only to the PR.
-3. For an approved `CONFIRMED` diagnosis, pass the approved full plan and summary to `implement-idea` in pipeline mode as the approved spec, including the issue URL, baseline, and reproduction. Build from the diagnosed base and verify that the reproduction fails for the diagnosed reason before changing the implementation. If the base has moved and the diagnosis materially changes, return to diagnosis approval. Verify that the same reproduction passes with the fix. Link the issue in the PR body without a closing keyword such as `Fixes`, so merging does not close it automatically.
-4. When `implement-idea` returns the draft PR and build commit, continue at [After the build](#after-the-build).
+1. Resolve the supplied GitHub issue and run `diagnose-issue`. At the verdict, run the usage report for that window and keep it for the ledger. Present the verdict, evidence, and proposed next step and wait for the user's explicit diagnosis approval. For `CONFIRMED`, offer the full fix plan with the summary for approval together. For any other verdict, stop at the approved diagnosis. Keep any drafted issue reply in chat unless the user explicitly approves posting it. Factory's PR authorization applies only to the PR.
+2. For an approved `CONFIRMED` diagnosis, pass the approved full plan and summary to `implement-idea` in pipeline mode as the approved spec, including the issue URL, baseline, and reproduction. Build from the diagnosed base and verify that the reproduction fails for the diagnosed reason before changing the implementation. If the base has moved and the diagnosis materially changes, return to diagnosis approval. Verify that the same reproduction passes with the fix. Link the issue in the PR body without a closing keyword such as `Fixes`, so merging does not close it automatically.
+3. When `implement-idea` returns the draft PR and build commit, continue at [After the build](#after-the-build).
 
 ### After the build
 
-For builds from an idea or issue, run the usage report for the build window (it includes subagents) and keep it for Summary 1. Add the ledger to the PR description with the Build row and, for issue input, the Diagnosis row. Then continue at [2. Post Summary 1](#2-post-summary-1).
+Use the returned checkout and PR refs for the rest of the run. Run the usage report for the build window (it includes subagents) and keep it for Summary 1. Add the ledger to the PR description with the Build row and, for issue input, the Diagnosis row. Then continue at [2. Post Summary 1](#2-post-summary-1).
 
-### Existing PR path
+### Existing PR review
 
-1. Resolve the PR and record its status, comparison, head repository, and branch. The owner-label check applies to building from an issue alone. Factory may push fixes when the head repository is the base repository or one the user owns. Any other head, such as a contributor's fork, needs the user's explicit approval to push at step 2 and GitHub write access to that branch.
+1. Resolve the PR and record its status, comparison, head repository, and branch. Factory may push fixes when the head repository is the base repository or one the user owns. Any other head, such as a contributor's fork, needs the user's explicit approval to push at step 2 and GitHub write access to that branch.
 2. Run `diagnose-issue` with the PR, any supplied issue, and the comparison's head SHA and merge base. Use an explicitly supplied baseline when given. For PR-only input, use the skill's automatic discovery of the linked issue. Present the source report, diagnosis, verification verdict, tested commits, and proposed next step. For a closed or merged PR, return this evidence in chat and stop. For an open PR, ask for explicit approval of the diagnosed scope and review plan if `VERIFIED`, or of the remaining fix plan if `NOT_FIXED`. For `INCONCLUSIVE`, report the missing evidence and stop before writing to the PR. State where fix commits would be pushed. Keep any issue reply in chat pending separate approval to post.
 3. After approval, confirm the PR is open and its comparison matches the evidence. If the comparison changed, rerun verification using the same report and reproduction. Use the new merge base for a default baseline and keep an explicitly supplied baseline. Stop if the result is inconclusive and seek approval again if the diagnosis or planned work materially changes. Apply the same refresh and approval rules to unexpected comparison changes before review or handoff. Use the approved behavior and acceptance checks as the spec for review. Record the approved report, baseline, reproduction, tested comparison, verdict, and any remaining fix gap in the checkpoint.
 4. Run the usage report for the Diagnosis window and add the Diagnosis row with the verification result and approval to the PR description's ledger. Continue at [2. Post Summary 1](#2-post-summary-1) with that PR and tested head.
@@ -111,7 +127,7 @@ Send the user the PR and final handoff links with the verified PR status and the
 
 ## 8. Stop and resume on a usage limit
 
-Keep a checkpoint in harness task state or scratch space as the run progresses. Record the entry path, checkout, approved spec, branch and PR, last completed step, PR status, round and reviewed comparison, findings and fix outcomes, and links to reviews, replies, and conversation comments as they become available. For diagnosis paths, include the source report, any owner-label evidence, approved diagnosis, reproduction, tested comparison or commits, and verification outcomes. Record the final handoff comparison and each stage's start and end timestamps, usage-report JSON, and ledger rows.
+Keep a checkpoint in harness task state or scratch space as the run progresses. Record the entry path, checkout, approved spec, branch and PR, last completed step, PR status, round and reviewed comparison, findings and fix outcomes, and links to reviews, replies, and conversation comments as they become available. For diagnosis paths, include the source report, approved diagnosis, reproduction, tested comparison or commits, and verification outcomes. Record the final handoff comparison and each stage's start and end timestamps, usage-report JSON, and ledger rows.
 
 On a usage limit, stop starting new work. If the PR exists and the harness still permits a GitHub write, post a PR comment with the step and round where work stopped, the relevant comparison or findings, and the next step to resume. If the limit prevents posting or precedes PR creation, keep the notice in the checkpoint and surface it to the user when possible. On resume, post the notice once a PR and write access are available. Check current GitHub state and the checkpoint before retrying a push, review, comment, or ready-for-review transition. Before republishing a round, look for a review and replies for the same round and reviewed comparison. Record existing links and publish only missing results. Resume from the first incomplete step using the existing PR and approval.
 

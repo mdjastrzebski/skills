@@ -1,22 +1,30 @@
 ---
 name: implement-idea
-description: Use when the user brings a rough idea for a feature, fix, refactor, or other change and wants it turned into a spec and built, or says "implement this idea", "I have an idea for…", "grill me on this, then build it". Gets the spec approved, then delegates the build. Use pipeline mode when `factory` invokes the skill or the user explicitly requests it.
+description: Use when the user wants a rough idea turned into a spec and built, says "implement this idea" or "grill me on this, then build it", or Factory sends a spec to validate and build. Use pipeline mode when Factory invokes the skill or the user explicitly requests it.
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
 ---
 
 # Implement Idea
 
-Turn a rough idea into an approved spec, then hand it to a subagent to build. Five phases, in order: research, grill, approve, delegate, deliver. Do not write code yourself.
+Turn a rough idea into an approved spec, or validate a spec supplied by Factory and get it approved, then hand it to a subagent to build and deliver. Do not write code yourself.
 
 ## Mode
 
 - **Interactive (default):** follow phases 1–5.
-- **Pipeline:** follow the same spec approval gate, then publish a draft PR and return the build result to the caller. Ground the idea as usual. Resolve routine questions as stated assumptions and ask only about a choice that prevents a viable spec. If the caller provides the full spec, its summary, and explicit user approval of that version, resume at phase 4. Any material spec change needs fresh approval.
+- **Pipeline:** publish a draft PR and return the build result to the caller. For a rough idea, follow the usual spec approval gate. Ground the idea as usual, resolve routine questions as stated assumptions, and ask only about a choice that prevents a viable spec. If the caller provides the full spec, its summary, and explicit user approval of that version, resume at phase 4. If Factory passes a user-supplied spec for implementation, follow [Validate a supplied spec](#validate-a-supplied-spec). Any material change after the spec is approved needs fresh approval.
 
 ## 1. Ground yourself first
 
 Before the first question, read enough of the codebase to avoid asking what the code already answers: where the change would live, existing patterns it should follow, how tests and the dev loop work (`AGENTS.md`, `CLAUDE.md`, `README`, package scripts). Never ask the user something you can look up.
+
+### Validate a supplied spec
+
+Ground the spec in the target codebase. Check that the goal, scope, expected behavior, applicable constraints and edge cases, and observable acceptance criteria give the builder and reviewer enough to work from. Look for conflicts with the codebase or within the spec. Use project conventions for routine implementation choices and record any assumptions that matter to the build.
+
+Write the full spec described in phase 3 from the supplied spec and the assumptions recorded above, and show its summary in that format: short bullets for the goal, scope in and out, behavior, key decisions, assumptions, and acceptance criteria, with the key decisions and assumptions highlighted. Show the summary before asking any question.
+
+If a missing or conflicting decision could change the behavior, scope, or acceptance checks, ask the user using phase 2. Recheck the spec after each answer, update both versions, and re-present only the changed parts of the summary. Skip questioning when the spec has no such gaps. Then ask for approval as in phase 3 and stop until the user approves. Continue at phase 4 only after explicit approval.
 
 ## 2. Grill, one question at a time
 
@@ -110,7 +118,7 @@ Keep it short. Don't paste the diff or repeat the spec.
 
 ### Pipeline delivery
 
-1. After approval and before delegating, resolve the target GitHub repository and base branch (the caller's target or the repository default). Create a new branch from that base in a clean checkout. Use an isolated checkout if needed to preserve existing work. Keep the worker's usual restriction on committing and pushing.
+1. Once the spec is approved for implementation under the selected mode, resolve the target GitHub repository and base branch (the caller's target or the repository default). Create a new branch from that base in a clean checkout. Use an isolated checkout if needed to preserve existing work. Keep the worker's usual restriction on committing and pushing.
 2. After verifying the build, stage only the approved build changes, commit them, and push the branch. If there is no build to publish, or a required check or publication step fails, return the blocker and the last completed step to the caller.
 3. Open a draft PR against the chosen base using authenticated `gh pr create --draft --base <base> --head <branch> --title <title> --body-file <file>` or the equivalent GitHub MCP operation. Put the approved spec summary first, then the complete approved spec inside `<details>` with a `<summary>Full spec</summary>` and blank lines around the spec. Keep local scratch paths out of the summary. Verify the draft PR and its refs. Before retrying PR creation, look up an existing PR for the same head and base.
 4. Return the PR number and URL, repository, base and head branches, build commit, checkout path, approved spec summary and full spec, deviations, checks, and steps to try the build. Continue in the calling workflow. For direct pipeline requests, return the same result to the user.
