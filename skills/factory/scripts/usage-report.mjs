@@ -32,9 +32,10 @@
  * Codex: $CODEX_HOME or ~/.codex, sessions/**\/rollout-*.jsonl. Counts deltas of the cumulative
  *   token_count totals, attributed to the latest turn_context model. Subagent rollouts are all
  *   descendants of the main session (subagents of subagents included), linked by session_meta
- *   parent_thread_id or forked_from_id. A fork
- *   (forked_from_id) may begin with a copy of the parent's history: in such a rollout, token_count
- *   events stamped before its own session_meta timestamp are ignored, and the first remaining
+ *   parent_thread_id (or source.subagent.thread_spawn.parent_thread_id). A fork (forked_from_id
+ *   only) is a user-started session: it can be the main session and is never counted as a subagent
+ *   of its origin. A fork rollout may begin with a copy of the parent's history: in such a
+ *   rollout, token_count events stamped before its own session_meta timestamp are ignored, and the first remaining
  *   token_count total is only a baseline (not counted), since the counter may continue from the
  *   parent's. The format is undocumented; surprises are listed in format_warnings.
  *
@@ -304,7 +305,8 @@ function codexMeta(file) {
     path: file,
     id: p.id ?? null,
     cwd: p.cwd ?? null,
-    parent: p.parent_thread_id ?? p.forked_from_id ?? (spawn && spawn.parent_thread_id) ?? null,
+    // Spawn parent only: a fork (forked_from_id) is a user-started session, not a subagent.
+    parent: p.parent_thread_id ?? (spawn && spawn.parent_thread_id) ?? null,
     mtime: mtime(file),
   };
 }
@@ -320,7 +322,7 @@ function discoverCodex(opts, cwd) {
   if (!main) return [];
   const sources = [{ path: main.path, role: "main", session_id: main.id }];
   if (main.id) {
-    // Descendants transitively (main -> A -> B); the seen set also guards against parent cycles.
+    // Spawned descendants transitively (main -> A -> B); forks are never counted; the seen set also guards against parent cycles.
     const seen = new Set([main.id]);
     const descendants = new Set();
     for (let grew = true; grew; ) {
