@@ -62,7 +62,7 @@ Pass the idea and target repo to `implement-idea` in pipeline mode. Wait for exp
 
 ### Supplied spec path
 
-Pass the user's spec and target repo to `implement-idea` in pipeline mode as a supplied spec for implementation. Have it validate the spec against the repo and ask one focused question at a time about any gaps that affect the build. The implementation request and clarifying answers authorize the resulting spec within the requested scope. Once it is complete, proceed directly to implementation without a separate approval prompt. Record how the spec was authorized in the checkpoint and the ledger's Build outcome. Continue at [After the build](#after-the-build) when the skill returns a verified draft PR and build commit.
+Pass the user's spec and target repo to `implement-idea` in pipeline mode as a supplied spec for implementation. Have it validate the spec against the repo, show a short spec summary, ask one focused question at a time about any gaps that affect the build, and wait for explicit user approval of the resulting spec inside that skill. Record the approval in the checkpoint and the ledger's Build outcome. Continue at [After the build](#after-the-build) when the skill returns a verified draft PR and build commit.
 
 ### Issue path without a PR
 

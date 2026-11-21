@@ -7,12 +7,12 @@ metadata:
 
 # Implement Idea
 
-Turn a rough idea into an approved spec or validate a spec supplied by Factory, then hand it to a subagent to build and deliver.
+Turn a rough idea into an approved spec, or validate a spec supplied by Factory and get it approved, then hand it to a subagent to build and deliver.
 
 ## Mode
 
 - **Interactive (default):** follow phases 1–5.
-- **Pipeline:** publish a draft PR and return the build result to the caller. For a rough idea, follow the usual spec approval gate. Ground the idea as usual, resolve routine questions as stated assumptions, and ask only about a choice that prevents a viable spec. If the caller provides the full spec, its summary, and explicit user approval of that version, resume at phase 4. If Factory passes a user-supplied spec for implementation, follow [Validate a supplied spec](#validate-a-supplied-spec). Any material change after the spec is accepted for implementation needs fresh approval.
+- **Pipeline:** publish a draft PR and return the build result to the caller. For a rough idea, follow the usual spec approval gate. Ground the idea as usual, resolve routine questions as stated assumptions, and ask only about a choice that prevents a viable spec. If the caller provides the full spec, its summary, and explicit user approval of that version, resume at phase 4. If Factory passes a user-supplied spec for implementation, follow [Validate a supplied spec](#validate-a-supplied-spec). Any material change after the spec is approved needs fresh approval.
 
 ## 1. Ground yourself first
 
@@ -22,7 +22,9 @@ Before the first question, read enough of the codebase to avoid asking what the 
 
 Ground the spec in the target codebase. Check that the goal, scope, expected behavior, applicable constraints and edge cases, and observable acceptance criteria give the builder and reviewer enough to work from. Look for conflicts with the codebase or within the spec. Use project conventions for routine implementation choices and record any assumptions that matter to the build.
 
-If a missing or conflicting decision could change the behavior, scope, or acceptance checks, ask the user using phase 2. Recheck the spec after each answer. If questioning ends with a material decision still open, report it and pause until the user settles it or delegates it to you. Use the user's implementation request and answers as authorization for that scope. Once the spec is ready, prepare the full spec and summary described in phase 3, then go straight to phase 4 without the approval prompt.
+Save the supplied spec as the full spec described in phase 3 and show its summary in that format: short bullets for the goal, scope in and out, behavior, key decisions, assumptions, and acceptance criteria, with the key decisions and assumptions highlighted. Show the summary before asking any question.
+
+If a missing or conflicting decision could change the behavior, scope, or acceptance checks, ask the user using phase 2. Recheck the spec after each answer, update both versions, and re-present only the changed parts of the summary. Skip questioning when the spec has no such gaps. Then ask for approval as in phase 3 and stop until the user approves. Continue at phase 4 only after explicit approval.
 
 ## 2. Grill, one question at a time
 

@@ -2,7 +2,7 @@
 
 ## 0.6.0 (2026-11-21)
 
-- Validate supplied implementation specs and continue through the build pipeline once material questions are settled.
+- Validate supplied implementation specs, show a short spec summary, clarify gaps that affect the build, and continue through the build pipeline after the user approves the spec.
 - Return existing-PR diagnosis in chat by default. Run the PR review and fix pipeline on explicit request.
 
 ## 0.5.0 (2026-11-21)

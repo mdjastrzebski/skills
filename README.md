@@ -30,7 +30,7 @@ For more on the CLI, see:
 
 ## Factory Workflow
 
-`factory` takes a feature idea, a supplied implementation spec, or an owner-labeled GitHub issue through a draft PR, review, and handoff. Give Factory a spec to implement and it checks the spec against the codebase, asks about gaps that affect the build, and proceeds once the spec is complete.
+`factory` takes a feature idea, a supplied implementation spec, or an owner-labeled GitHub issue through a draft PR, review, and handoff. Give Factory a spec to implement and it checks the spec against the codebase, shows a short summary of its scope, key decisions, and assumptions, asks about gaps that affect the build, and proceeds once you approve the spec.
 
 Use `$factory PR #1966` or `$factory diagnose PR #1966` for an existing PR. Factory uses the linked issue or PR description, compares the base with the PR changes, and returns the diagnosis in chat. Request the review and fix pipeline explicitly to continue beyond diagnosis. To install the runtime skills in a repo or locally, install them together.
 
