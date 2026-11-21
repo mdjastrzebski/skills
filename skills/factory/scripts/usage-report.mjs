@@ -18,7 +18,8 @@
  *   --session-id  use that session instead of the newest one for the cwd. Always pass it when
  *                 several sessions may share the cwd; without it, another session's usage inside
  *                 the window adds a format_warnings entry
- *   --transcript  explicit JSONL file (repeatable); skips discovery, including subagents
+ *   --transcript  explicit JSONL file (repeatable); skips discovery, including subagents.
+ *                 For Codex, pass an exported main rollout and any contributing subagent rollouts
  *   --prices      JSON {model: {input, output, cache_write_5m, cache_write_1h, cache_read,
  *                 long_context: {threshold, input, output, cache_write_5m, cache_write_1h,
  *                 cache_read}}} in USD per MTok, merged field by field over the built-in
@@ -47,6 +48,8 @@
  *   cache_read, cache_write_5m, cache_write_1h, messages (Claude) or events (Codex), cost_usd.
  *   Codex input excludes cached tokens. A model with no price has cost_usd null and the totals
  *   have cost_complete false, and totals.cost_usd is null (cost_usd_known sums the priced models).
+ *   For Codex, totals.usage_complete is false when a supplied rollout has no readable usage
+ *   or contains an unrecognized usage record. Its total cost is then null even with prices.
  *   Never estimate a missing price. Claude messages are priced one by one: a message whose
  *   prompt (input + cache_read + cache_write tokens) exceeds the model's long_context.threshold
  *   (built in for claude-haiku-5-5: 100000) uses the long_context rates; per-model cost_usd is the
@@ -316,7 +319,25 @@ function codexMeta(file) {
 
 function discoverCodex(opts, cwd) {
   if (opts.transcripts.length) {
-    return opts.transcripts.map((p) => ({ path: path.resolve(p), role: "main" }));
+    const [main, ...others] = opts.transcripts.map((p) => path.resolve(p));
+    for (const file of [main, ...others]) {
+      if (!fs.existsSync(file)) throw new UsageError(`transcript not found: ${file}`);
+    }
+    const meta = codexMeta(main);
+    if (opts.sessionId && meta?.id !== opts.sessionId) {
+      throw new UsageError("the first --transcript must belong to the requested Codex session");
+    }
+    const sources = [{ path: main, role: "main", session_id: meta?.id }];
+    const metas = others.map((file) => codexMeta(file) ?? { path: file });
+    appendCodexDescendants(sources, metas, meta?.id);
+    if (opts.sessionId && sources.length !== opts.transcripts.length) {
+      throw new UsageError("additional Codex transcripts must be distinct descendants of the requested session");
+    }
+    // With no session ID, preserve explicit files supplied without usable lineage metadata.
+    for (const file of others) {
+      if (!sources.some((source) => source.path === file)) sources.push({ path: file, role: "main" });
+    }
+    return sources;
   }
   const metas = walk(codexRoot(), (n) => /^rollout-.*\.jsonl$/.test(n)).map(codexMeta).filter(Boolean);
   const candidates = metas.filter((m) => (opts.sessionId ? m.id === opts.sessionId : m.cwd === cwd && !m.parent));
@@ -324,14 +345,20 @@ function discoverCodex(opts, cwd) {
   const main = candidates[0];
   if (!main) return [];
   const sources = [{ path: main.path, role: "main", session_id: main.id }];
-  if (main.id) {
+  appendCodexDescendants(sources, metas, main.id);
+  if (!opts.sessionId) sources.others = candidates.slice(1).map((m) => m.path);
+  return sources;
+}
+
+function appendCodexDescendants(sources, metas, mainId) {
+  if (mainId) {
     // Spawned descendants transitively (main -> A -> B); forks are never counted; the seen set also guards against parent cycles.
-    const seen = new Set([main.id]);
+    const seen = new Set([mainId]);
     const descendants = new Set();
     for (let grew = true; grew; ) {
       grew = false;
       for (const m of metas) {
-        if (m.parent && seen.has(m.parent) && m.path !== main.path && !descendants.has(m.path)) {
+        if (m.parent && seen.has(m.parent) && m.path !== sources[0].path && !descendants.has(m.path)) {
           descendants.add(m.path);
           if (m.id) seen.add(m.id);
           grew = true;
@@ -340,16 +367,17 @@ function discoverCodex(opts, cwd) {
     }
     for (const p of [...descendants].sort()) sources.push({ path: p, role: "subagent" });
   }
-  if (!opts.sessionId) sources.others = candidates.slice(1).map((m) => m.path);
-  return sources;
 }
 
 async function readCodex(sources, win, counters) {
   const models = {};
   const warnings = [];
-  let tokenEvents = 0;
+  let usageComplete = true;
   for (const src of sources) {
     src.records = 0;
+    let tokenEvents = 0;
+    let unreadableEvents = 0;
+    const skippedBefore = counters.skipped_lines;
     let model = null;
     let metaModel = null;
     let prev = null;
@@ -369,16 +397,15 @@ async function readCodex(sources, win, counters) {
       } else if (rec.type === "turn_context") {
         if (typeof p.model === "string" && p.model) model = p.model;
       } else if (rec.type === "event_msg" && p.type === "token_count") {
-        const total = p.info && typeof p.info === "object" ? p.info.total_token_usage : null;
-        if (!total || typeof total !== "object") return;
-        const cur = {
-          input: num(total.input_tokens),
-          cached: num(total.cached_input_tokens),
-          output: num(total.output_tokens),
-          reasoning: num(total.reasoning_output_tokens),
-          write: num(total.cache_write_input_tokens),
-        };
-        if (forkStart !== null && Date.parse(rec.timestamp) < forkStart) {
+        // A null info is a normal context update without new usage.
+        if (p.info === null) return;
+        const cur = codexTokenTotal(p.info?.total_token_usage);
+        const timestamp = Date.parse(rec.timestamp);
+        if (!cur || !Number.isFinite(timestamp)) {
+          unreadableEvents++;
+          return;
+        }
+        if (forkStart !== null && timestamp < forkStart) {
           lastPre = cur;
           return;
         }
@@ -411,10 +438,24 @@ async function readCodex(sources, win, counters) {
         src.records++;
       }
     }, counters);
+    const name = path.basename(src.path);
+    if (!tokenEvents) warnings.push(`${name}: no readable token_count events found`);
+    if (unreadableEvents) warnings.push(`${name}: ${unreadableEvents} unrecognized token_count event(s)`);
+    const skipped = counters.skipped_lines - skippedBefore;
+    if (skipped) warnings.push(`${name}: ${skipped} unreadable JSONL record(s)`);
+    usageComplete &&= tokenEvents > 0 && unreadableEvents === 0 && skipped === 0;
   }
-  if (!tokenEvents) warnings.push("no token_count events with info found; the rollout format may have changed or the session has no model calls");
   if (models.unknown) warnings.push("some token events had no preceding turn_context model; attributed to 'unknown'");
-  return { models, countKey: "events", warnings };
+  return { models, countKey: "events", warnings, usageComplete };
+}
+
+function codexTokenTotal(total) {
+  if (total?.input_tokens === undefined || total.output_tokens === undefined) return null;
+  const input = total.input_tokens;
+  const output = total.output_tokens;
+  const { cached_input_tokens: cached = 0, reasoning_output_tokens: reasoning = 0, cache_write_input_tokens: write = 0 } = total;
+  if (![input, output, cached, reasoning, write].every((tokens) => Number.isSafeInteger(tokens) && tokens >= 0)) return null;
+  return { input, cached, output, reasoning, write };
 }
 
 // Main transcripts other than the chosen one that have usage records inside the window.
@@ -530,13 +571,17 @@ async function main() {
   }
 
   const sources = harness === "claude" ? discoverClaude(opts, cwd) : discoverCodex(opts, cwd);
-  if (!sources.length) throw new UsageError(`no ${harness} transcript found for ${cwd}`);
+  if (!sources.length) {
+    if (opts.sessionId) throw new UsageError(`no ${harness} transcript found for the requested session`);
+    throw new UsageError(`no ${harness} transcript found for ${cwd}`);
+  }
   for (const s of sources) {
     if (!fs.existsSync(s.path)) throw new UsageError(`transcript not found: ${s.path}`);
   }
 
   const counters = { skipped_lines: 0 };
-  const { models: raw, countKey, warnings } = harness === "claude" ? await readClaude(sources, win, counters, prices) : await readCodex(sources, win, counters);
+  const { models: raw, countKey, warnings, usageComplete = true } =
+    harness === "claude" ? await readClaude(sources, win, counters, prices) : await readCodex(sources, win, counters);
 
   if (sources.others?.length) {
     const found = await otherSessionsInWindow(sources.others, harness, win, { skipped_lines: 0 });
@@ -546,7 +591,7 @@ async function main() {
   const models = {};
   const total = blankUsage();
   let totalCost = 0;
-  let complete = true;
+  let complete = usageComplete;
   for (const name of Object.keys(raw).sort()) {
     const u = raw[name];
     const cost = costOf(u, priceFor(prices, name));
@@ -558,6 +603,7 @@ async function main() {
   const totals = shape(total, countKey, harness, complete ? Math.round(totalCost * 1e6) / 1e6 : null);
   totals.cost_usd_known = Math.round(totalCost * 1e6) / 1e6; // priced models only
   totals.cost_complete = complete;
+  if (harness === "codex") totals.usage_complete = usageComplete;
 
   const result = {
     harness,
