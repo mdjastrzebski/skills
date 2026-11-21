@@ -11,6 +11,7 @@
 - Validate supplied implementation specs, show a short spec summary, clarify gaps that affect the build, and continue through the build pipeline after the user approves the spec.
 - Drop the owner-applied label check from the issue path: a user's Factory request selects the issue.
 - Return existing-PR diagnosis in chat by default. Run the PR review and fix pipeline on explicit request.
+- Give the reviewer the repo's review guidance (root `REVIEW.md`, else `AGENTS.md` or `CLAUDE.md`), prefer a reviewer separate from the build, tag pre-existing findings, and name the reviewer and guidance in each round review.
 
 ## 0.5.0 (2026-11-21)
 
