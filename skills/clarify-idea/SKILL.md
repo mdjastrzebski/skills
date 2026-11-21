@@ -18,7 +18,7 @@ Any material change after approval needs fresh approval.
 
 ## 1. Ground yourself first
 
-If the input is already an approved spec with an approval record (for example from an earlier run, or a diagnosed fix plan the user approved), do not re-approve it: hand it to `implement-spec` when the user asked to build it, or return it to the caller in pipeline mode.
+Reuse an approval only when its record covers the exact spec submitted, no material gap or change is known, and fresh approval was not requested. Hand that approved spec to `implement-spec` when the user asked to build it, or return it to the caller in pipeline mode. When approval is reopened, validate the input as a supplied spec, use any new evidence to address the reason for reopening, and wait for fresh approval in phase 4.
 
 Before the first question, read enough of the codebase to avoid asking what the code already answers: where the change would live, existing patterns it should follow, how tests and the dev loop work (`AGENTS.md`, `CLAUDE.md`, `README`, package scripts). Never ask the user something you can look up.
 
@@ -100,7 +100,7 @@ Highlight the key decisions and assumptions. Approve, edit, or reject — do not
 
 ## 5. Return the approved spec
 
-Record when and how the user approved (for example "approved by user in chat at Nov 21 12:00 UTC").
+Record who approved which version of the full spec and when and how they approved it (for example "spec revision 2 approved by user in chat at Nov 21 12:00 UTC").
 
 - **Pipeline:** return the full spec, summary, full-spec path, difficulty, recommended model and effort, any user override, assumptions, and the approval record to the caller.
 - **Interactive:** report the full-spec path. If the user asked to build it ("implement this idea", "grill me, then build it"), hand the approved spec, the recommended model and effort, and the approval record to `implement-spec`. Otherwise offer to build it with `implement-spec`, or with `factory` to add review rounds and a draft PR.

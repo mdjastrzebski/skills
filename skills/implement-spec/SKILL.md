@@ -22,7 +22,7 @@ Require:
 - the approval record: who approved which version, and when
 - the build estimate: difficulty and the recommended model and effort, with any user override
 
-If the input is not an approved spec — a rough idea, an unapproved spec, or a spec with a gap that would change behavior, scope, or acceptance checks — run `clarify-idea` on it first and continue with the approved spec and estimate it returns. `clarify-idea` asks questions only when something is unclear; for a clear idea it goes straight to the summary and approval. Do not resolve material gaps here. In pipeline mode, stop with reason `not_approved` instead (see [Pipeline stops](#pipeline-stops)).
+If the input is a rough idea, lacks approval for the submitted version, or has a gap that would change behavior, scope, or acceptance checks, run `clarify-idea` on it first with the reason it needs approval. For a supplied spec, require fresh approval even if an earlier approval record exists. Continue with the spec, approval record, and estimate it returns. `clarify-idea` asks questions only when something is unclear. Do not resolve material gaps here. In pipeline mode, stop with reason `not_approved` instead (see [Pipeline stops](#pipeline-stops)).
 
 If the input has no build estimate (for example a diagnosed fix plan), rate it yourself with the table in step 2 and include the rating in your result.
 

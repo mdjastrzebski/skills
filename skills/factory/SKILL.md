@@ -66,7 +66,7 @@ Pass the user's spec and target repo to `clarify-idea` in pipeline mode as a sup
 
 ### Build
 
-Record the approval and the build estimate in the checkpoint, end the Spec stage at the approval, and run the usage report for its window. Pass the approved full spec, summary, approval record, difficulty, recommended model and effort (with any user override), and target repo to `implement-spec` in pipeline mode. Continue at [After the build](#after-the-build) when it returns a verified draft PR and build commit. If it stops with `not_approved` or `material_deviation`, pass the spec and the returned evidence back to `clarify-idea` in pipeline mode for fresh approval, then rerun this step. See [Reopened approval](#reopened-approval).
+Record the approval and the build estimate in the checkpoint, end the Spec stage at the approval, and run the usage report for its window. Pass the approved full spec, summary, approval record, difficulty, recommended model and effort (with any user override), and target repo to `implement-spec` in pipeline mode. Continue at [After the build](#after-the-build) when it returns a verified draft PR and build commit. If it stops with `not_approved` or `material_deviation`, pass the spec and returned evidence to `clarify-idea` in pipeline mode as a supplied spec requiring fresh approval. Wait for the user to approve the resulting spec, then rerun this step with that spec and its new approval record. See [Reopened approval](#reopened-approval).
 
 ### Issue path without a PR
 
