@@ -12,3 +12,4 @@ Use this guide before finishing changes to a skill.
 - the root `README.md` has been updated if the skill set changed
 - version bumped once on this branch at the right level, changelog entry written, `scripts/check-versions.sh` passes
 - the skill is in the right place (`skills/` vs `skills/legacy/`) and README group
+- `.claude/skills/` and `.agents/skills/` links match `skills/` (`scripts/link-project-skills.sh --check` passes)

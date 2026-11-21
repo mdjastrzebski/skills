@@ -71,7 +71,9 @@ skills/
 
 ## Local Development
 
-To work on these skills, symlink them from your clone instead of installing copies. Edits in the working tree then show up in every agent session right away:
+Claude Code and Codex sessions opened in this repo, including Codex Cloud, discover active skills through the tracked links in `.claude/skills/` and `.agents/skills/`, respectively. On Windows, clone with `git clone -c core.symlinks=true <repo-url>` in a setup that allows symlink creation.
+
+To use the working copy's skills in other projects, use the global scripts below.
 
 ```bash
 scripts/remove-global-skills.sh   # delete copies installed by `npx skills add` (add --dry-run to preview)
