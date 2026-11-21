@@ -11,7 +11,9 @@
  *   --harness     transcript format; auto (default) picks the harness with a transcript for the
  *                 cwd, the most recently modified if both
  *   --since/until only count records whose timestamp is inside [since, until]
- *   --session-id  use that session instead of the newest one for the cwd
+ *   --session-id  use that session instead of the newest one for the cwd. Always pass it when
+ *                 several sessions may share the cwd; without it, another session's usage inside
+ *                 the window adds a format_warnings entry
  *   --transcript  explicit JSONL file (repeatable); skips discovery, including subagents
  *   --prices      JSON {model: {input, output, cache_write_5m, cache_write_1h, cache_read}} in
  *                 USD per MTok, merged over the built-in Anthropic prices
@@ -205,6 +207,7 @@ function discoverClaude(opts, cwd) {
     const id = main.slice(0, -".jsonl".length);
     const sources = [{ path: path.join(dir, main), role: "main", session_id: id }];
     for (const p of walk(path.join(dir, id), (n) => n.endsWith(".jsonl")).sort()) sources.push({ path: p, role: "subagent" });
+    if (!opts.sessionId) sources.others = files.filter((f) => f !== main).map((f) => path.join(dir, f));
     return sources;
   }
   return [];
@@ -279,6 +282,7 @@ function discoverCodex(opts, cwd) {
       sources.push({ path: m.path, role: "subagent" });
     }
   }
+  if (!opts.sessionId) sources.others = candidates.slice(1).map((m) => m.path);
   return sources;
 }
 
@@ -332,6 +336,21 @@ async function readCodex(sources, win, counters) {
   if (!tokenEvents) warnings.push("no token_count events with info found; the rollout format may have changed or the session has no model calls");
   if (models.unknown) warnings.push("some token events had no preceding turn_context model; attributed to 'unknown'");
   return { models, countKey: "events", warnings };
+}
+
+// Main transcripts other than the chosen one that have usage records inside the window.
+async function otherSessionsInWindow(others, harness, win, counters) {
+  const found = [];
+  for (const file of others) {
+    let hit = false;
+    await forEachJsonl(file, (rec) => {
+      if (hit || !win.contains(rec.timestamp)) return;
+      const p = rec.payload && typeof rec.payload === "object" ? rec.payload : null;
+      hit = harness === "claude" ? !!(rec.message && typeof rec.message === "object" && rec.message.usage && rec.message.model !== "<synthetic>") : !!(rec.type === "event_msg" && p && p.type === "token_count" && p.info);
+    }, counters);
+    if (hit) found.push(file);
+  }
+  return found;
 }
 
 // ---------- pricing and output ----------
@@ -424,6 +443,11 @@ async function main() {
 
   const counters = { skipped_lines: 0 };
   const { models: raw, countKey, warnings } = harness === "claude" ? await readClaude(sources, win, counters) : await readCodex(sources, win, counters);
+
+  if (sources.others?.length) {
+    const found = await otherSessionsInWindow(sources.others, harness, win, { skipped_lines: 0 });
+    if (found.length) warnings.push(`--session-id not given and ${found.length} other main transcript(s) in the same folder have usage inside the window (e.g. ${found[0]}); the newest by modification time was used, which may not be this session. Rerun with --session-id`);
+  }
 
   const models = {};
   const total = blankUsage();
