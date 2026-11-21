@@ -1,6 +1,6 @@
 ---
 name: clarify-idea
-description: Use when the user wants a rough idea turned into an approved spec, says "grill me on this", "spec this out", or "implement this idea", or Factory sends an idea or a supplied spec to clarify and approve. Interactive by default; use pipeline mode when Factory invokes the skill or the user explicitly requests it. Does not write code.
+description: Use when the user wants a rough idea turned into an approved spec, says "grill me on this", "spec this out", "implement this idea", or "build this", or Factory sends an idea or a supplied spec to clarify and approve. Interactive by default; use pipeline mode when Factory invokes the skill or the user explicitly requests it. Does not write code.
 metadata:
   version: "0.1.0"
 ---
@@ -11,7 +11,7 @@ Turn a rough idea into an approved spec, or validate a supplied spec and get it 
 
 ## Mode
 
-- **Interactive (default):** follow phases 1–5.
+- **Interactive (default):** follow phases 1–5. Phase 2 runs only when the idea is unclear.
 - **Pipeline:** for a rough idea, ground it as usual, resolve routine questions as stated assumptions, and ask only about a choice that prevents a viable spec. For a supplied spec, follow [Validate a supplied spec](#validate-a-supplied-spec). Always keep the approval gate in phase 4, then return the result in phase 5 to the caller.
 
 Any material change after approval needs fresh approval.
@@ -19,6 +19,8 @@ Any material change after approval needs fresh approval.
 ## 1. Ground yourself first
 
 Before the first question, read enough of the codebase to avoid asking what the code already answers: where the change would live, existing patterns it should follow, how tests and the dev loop work (`AGENTS.md`, `CLAUDE.md`, `README`, package scripts). Never ask the user something you can look up.
+
+Then decide whether the idea is clear: list the open decisions that would change behavior, scope, or acceptance checks and that the code does not settle. If there are none, skip phase 2 and go to phase 3, recording the routine choices as assumptions. Otherwise grill in phase 2, whether the user asked only for a spec or also for the build.
 
 ### Validate a supplied spec
 
@@ -28,7 +30,7 @@ Write the full spec (phase 3) from the supplied spec and those assumptions, and 
 
 ## 2. Grill, one question at a time
 
-Interview the user like a sharp senior engineer stress-testing the idea.
+Interview the user like a sharp senior engineer stress-testing the idea. Ask only about the open decisions from phase 1 and those they lead to.
 
 - **One question per message.** Wait for the answer before asking the next. Never batch.
 - **Most important first.** Order by how much the answer changes the build: goal and success criteria → scope (what's in, what's explicitly out) → user-facing behavior → data and interfaces → edge cases and errors → non-functional (performance, security, compatibility) → polish.

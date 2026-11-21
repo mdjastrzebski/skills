@@ -1,6 +1,6 @@
 ---
 name: implement-spec
-description: Use when the user has an approved spec or fix plan and asks to build it, or when `clarify-idea` or Factory hands off an approved spec to build. Runs the build in a subagent sized to the spec's difficulty. Interactive by default; use pipeline mode when Factory invokes the skill or the user explicitly requests a draft PR. For a spec that is not yet approved, use `clarify-idea` first.
+description: Use when the user asks to build a spec or fix plan, or when `clarify-idea` or Factory hands off an approved spec to build. Runs the build in a subagent sized to the spec's difficulty. Interactive by default; use pipeline mode when Factory invokes the skill or the user explicitly requests a draft PR. Input that is not an approved spec goes through `clarify-idea` first.
 metadata:
   version: "0.1.0"
 ---
@@ -22,7 +22,7 @@ Require:
 - the approval record: who approved which version, and when
 - the build estimate: difficulty and the recommended model and effort, with any user override
 
-If the spec is not approved, or a gap in it would change behavior, scope, or acceptance checks, stop and send it back to `clarify-idea` or the caller. Do not resolve material gaps here.
+If the input is not an approved spec — a rough idea, an unapproved spec, or a spec with a gap that would change behavior, scope, or acceptance checks — run `clarify-idea` on it first and continue with the approved spec and estimate it returns. `clarify-idea` asks questions only when something is unclear; for a clear idea it goes straight to the summary and approval. Do not resolve material gaps here. In pipeline mode, return such input to the caller instead.
 
 If the input has no build estimate (for example a diagnosed fix plan), rate it yourself with the table in step 2 and include the rating in your result.
 
