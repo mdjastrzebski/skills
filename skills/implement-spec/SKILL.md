@@ -22,7 +22,7 @@ Require:
 - the approval record: who approved which version, and when
 - the build estimate: difficulty and the recommended model and effort, with any user override
 
-If the input is a rough idea, lacks approval for the submitted version, or has a gap that would change behavior, scope, or acceptance checks, run `clarify-idea` on it first with the reason it needs approval. For a supplied spec, require fresh approval even if an earlier approval record exists. Continue with the spec, approval record, and estimate it returns. `clarify-idea` asks questions only when something is unclear. Do not resolve material gaps here. In pipeline mode, stop with reason `not_approved` instead (see [Pipeline stops](#pipeline-stops)).
+If the input is a rough idea, lacks approval for the submitted version, or has a gap that would change behavior, scope, or acceptance checks, run `clarify-idea` on it first with the reason it needs approval. For a supplied spec, require fresh approval even if an earlier approval record exists. Continue this run with the spec, approval record, and estimate it returns. `clarify-idea` asks questions only when something is unclear. Do not resolve material gaps here. In pipeline mode, stop with reason `not_approved` instead (see [Pipeline stops](#pipeline-stops)).
 
 If the input has no build estimate (for example a diagnosed fix plan), rate it yourself with the table in step 2 and include the rating in your result.
 
@@ -56,7 +56,7 @@ Give the subagent a self-contained brief — it does not see this conversation:
 
 ## 4. Verify and deliver
 
-When the subagent finishes, verify its claims briefly: look at the diff, confirm the checks and any reproduction ran with the reported results. A deviation that changes behavior, scope, or acceptance checks needs fresh approval of the spec before delivery: in interactive mode, show the proposed spec change and wait for approval; in pipeline mode, stop with reason `material_deviation`. If the builder reports that the reproduction did not fail as diagnosed, stop with reason `reproduction_mismatch` in pipeline mode, or report it in interactive mode.
+When the subagent finishes, verify its claims briefly: look at the diff, confirm the checks and any reproduction ran with the reported results. A deviation that changes behavior, scope, or acceptance checks needs fresh approval of the spec before delivery: in interactive mode, pass the spec and the proposed change to `clarify-idea` for approval and continue with the spec it returns; in pipeline mode, stop with reason `material_deviation`. If the builder reports that the reproduction did not fail as diagnosed, stop with reason `reproduction_mismatch` in pipeline mode, or report it in interactive mode.
 
 In interactive mode, report concisely:
 

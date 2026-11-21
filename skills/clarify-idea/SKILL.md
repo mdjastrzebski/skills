@@ -103,4 +103,5 @@ Highlight the key decisions and assumptions. Approve, edit, or reject — do not
 Record who approved which version of the full spec and when and how they approved it (for example "spec revision 2 approved by user in chat at Nov 21 12:00 UTC").
 
 - **Pipeline:** return the full spec, summary, full-spec path, difficulty, recommended model and effort, any user override, assumptions, and the approval record to the caller.
+- **Invoked by another skill** (for example `implement-spec`): return the same result to that skill and do not hand off again.
 - **Interactive:** report the full-spec path. If the user asked to build it ("implement this idea", "grill me, then build it"), hand the approved spec, the recommended model and effort, and the approval record to `implement-spec`. Otherwise offer to build it with `implement-spec`, or with `factory` to add review rounds and a draft PR.
