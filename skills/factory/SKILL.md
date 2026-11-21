@@ -66,13 +66,17 @@ Pass the user's spec and target repo to `clarify-idea` in pipeline mode as a sup
 
 ### Build
 
-Record the approval and the build estimate in the checkpoint, end the Spec stage at the approval, and run the usage report for its window. Pass the approved full spec, summary, approval record, difficulty, recommended model and effort (with any user override), and target repo to `implement-spec` in pipeline mode. Continue at [After the build](#after-the-build) when it returns a verified draft PR and build commit.
+Record the approval and the build estimate in the checkpoint, end the Spec stage at the approval, and run the usage report for its window. Pass the approved full spec, summary, approval record, difficulty, recommended model and effort (with any user override), and target repo to `implement-spec` in pipeline mode. Continue at [After the build](#after-the-build) when it returns a verified draft PR and build commit. If it stops with `not_approved` or `material_deviation`, pass the spec and the returned evidence back to `clarify-idea` in pipeline mode for fresh approval, then rerun this step. See [Reopened approval](#reopened-approval).
 
 ### Issue path without a PR
 
 1. Resolve the supplied GitHub issue and run `diagnose-issue`. At the verdict, run the usage report for that window and keep it for the ledger. Present the verdict, evidence, and proposed next step and wait for the user's explicit diagnosis approval. For `CONFIRMED`, offer the full fix plan with the summary for approval together. For any other verdict, stop at the approved diagnosis. Keep any drafted issue reply in chat unless the user explicitly approves posting it. Factory's PR authorization applies only to the PR.
-2. For an approved `CONFIRMED` diagnosis, pass the approved full plan and summary to `implement-spec` in pipeline mode as the approved spec, with the approval record, issue URL, baseline, and reproduction. `implement-spec` sizes the build when the plan has no estimate, and its builder confirms that the reproduction fails for the diagnosed reason before changing the implementation and passes with the fix. Build from the diagnosed base. If the base has moved and the diagnosis materially changes, return to diagnosis approval. Have it link the issue in the PR body without a closing keyword such as `Fixes`, so merging does not close it automatically.
+2. For an approved `CONFIRMED` diagnosis, pass the approved full plan and summary to `implement-spec` in pipeline mode as the approved spec, with the approval record, issue URL, baseline, and reproduction. `implement-spec` sizes the build when the plan has no estimate, and its builder confirms that the reproduction fails for the diagnosed reason before changing the implementation and passes with the fix. Build from the diagnosed base. If it stops with `reproduction_mismatch`, `material_deviation`, or `not_approved`, return to step 1 with the returned evidence: rerun `diagnose-issue` when the base moved or the reproduction no longer fails, and get fresh diagnosis approval before rerunning this step. See [Reopened approval](#reopened-approval). Have it link the issue in the PR body without a closing keyword such as `Fixes`, so merging does not close it automatically.
 3. When `implement-spec` returns the draft PR and build commit, continue at [After the build](#after-the-build).
+
+### Reopened approval
+
+A reopened Spec or Diagnosis stage starts at the stopped Build's end and gets its own ledger row (`Spec 2`, `Diagnosis 2`) with the stop reason and the new approval in its outcome. Record the stopped attempt as a Build row with the stop reason, and the rerun as the next Build row. Windows stay contiguous. Reopen at most once per stage; if the rerun stops again, report the reason and evidence to the user and stop.
 
 ### After the build
 

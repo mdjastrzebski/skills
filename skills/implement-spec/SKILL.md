@@ -22,7 +22,7 @@ Require:
 - the approval record: who approved which version, and when
 - the build estimate: difficulty and the recommended model and effort, with any user override
 
-If the input is not an approved spec — a rough idea, an unapproved spec, or a spec with a gap that would change behavior, scope, or acceptance checks — run `clarify-idea` on it first and continue with the approved spec and estimate it returns. `clarify-idea` asks questions only when something is unclear; for a clear idea it goes straight to the summary and approval. Do not resolve material gaps here. In pipeline mode, return such input to the caller instead.
+If the input is not an approved spec — a rough idea, an unapproved spec, or a spec with a gap that would change behavior, scope, or acceptance checks — run `clarify-idea` on it first and continue with the approved spec and estimate it returns. `clarify-idea` asks questions only when something is unclear; for a clear idea it goes straight to the summary and approval. Do not resolve material gaps here. In pipeline mode, stop with reason `not_approved` instead (see [Pipeline stops](#pipeline-stops)).
 
 If the input has no build estimate (for example a diagnosed fix plan), rate it yourself with the table in step 2 and include the rating in your result.
 
@@ -56,7 +56,7 @@ Give the subagent a self-contained brief — it does not see this conversation:
 
 ## 4. Verify and deliver
 
-When the subagent finishes, verify its claims briefly: look at the diff, confirm the checks and any reproduction ran with the reported results. A deviation that changes behavior, scope, or acceptance checks needs fresh approval of the spec before delivery.
+When the subagent finishes, verify its claims briefly: look at the diff, confirm the checks and any reproduction ran with the reported results. A deviation that changes behavior, scope, or acceptance checks needs fresh approval of the spec before delivery: in interactive mode, show the proposed spec change and wait for approval; in pipeline mode, stop with reason `material_deviation`. If the builder reports that the reproduction did not fail as diagnosed, stop with reason `reproduction_mismatch` in pipeline mode, or report it in interactive mode.
 
 In interactive mode, report concisely:
 
@@ -74,3 +74,13 @@ Keep it short. Don't paste the diff or repeat the spec. Do not commit or push un
 2. After verifying the build, stage only the approved build changes, commit them, and push the branch. If there is no build to publish, or a required check or publication step fails, return the blocker and the last completed step to the caller.
 3. Open a draft PR against the chosen base using authenticated `gh pr create --draft --base <base> --head <branch> --title <title> --body-file <file>` or the equivalent GitHub MCP operation. Put the approved spec summary first, then the complete approved spec inside `<details>` with a `<summary>Full spec</summary>` and blank lines around the spec. Add any links the caller supplies, such as a diagnosed issue, as the caller directs. Keep local scratch paths out of the PR. Verify the draft PR and its refs. Before retrying PR creation, look up an existing PR for the same head and base.
 4. Return the PR number and URL, repository, base and head branches, build commit, checkout path, approved spec summary and full spec, difficulty, the model and effort that ran, deviations, checks, reproduction results when applicable, and steps to try the build. For direct pipeline requests, return the same result to the user.
+
+### Pipeline stops
+
+When the build cannot be delivered without fresh approval, publish nothing and return to the caller:
+
+- the reason: `not_approved` (input is not an approved spec or has a material gap), `material_deviation` (the build needs a change to behavior, scope, or acceptance checks), or `reproduction_mismatch` (the reproduction did not fail as diagnosed on the build base)
+- the evidence: the gap, the proposed spec change and why, or the reproduction command, base SHA, and observed result
+- the checkout path, branch, and any uncommitted build changes kept there, and the last completed step
+
+The caller gets fresh approval and reruns this skill with the updated spec.
