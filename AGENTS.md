@@ -20,7 +20,7 @@ Repo-wide notes:
 
 ## Code review
 
-A request to review code explicitly opts in to `fix-issues` auto mode and authorizes review, fixes, and publication to the open PR for the reviewed change. Follow any explicit user instructions about scope or publication.
+A user's direct request to review code explicitly opts in to `fix-issues` auto mode and authorizes review, fixes, and publication to the open PR for the reviewed change. Follow any explicit user instructions about scope or publication. This default never applies when a workflow or calling agent (such as `factory`) invokes the review: follow that caller's brief, return findings to it, and leave fixes and publication to it.
 
 1. Review the requested diff before editing. Use the harness reviewer when available or inspect the diff directly. Collect each finding's location, evidence, and impact. For `review only`, report the findings in chat and stop.
 2. For a PR with new findings, resolve the PR's head repository and branch. Prepare and verify a clean checkout on that branch at the exact commit reviewed before passing findings to [fix-issues](skills/fix-issues/SKILL.md). If this preflight fails, report the findings and blocker and stop. Pass `auto` explicitly as the mode to `fix-issues` and supply an explicit list of the new findings, including an empty list for a clean review. Have it verify the findings one at a time through [fix-issue](skills/fix-issue/SKILL.md), run relevant checks, and keep one commit per warranted fix. Read the linked skill files directly if project skill discovery fails. The calling workflow owns publication.
