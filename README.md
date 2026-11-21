@@ -14,6 +14,15 @@ npx skills add https://github.com/mdjastrzebski/skills --skill [skill]
 
 The `skills` CLI runs with `npx`, so there is no separate global install step.
 
+If you installed `story`, install `explain` and then remove `story`.
+
+```bash
+npx skills add https://github.com/mdjastrzebski/skills --skill explain
+npx skills remove story
+```
+
+Add `--global` to both commands if your `story` installation is global.
+
 For more on the CLI, see:
 
 - [skills.sh documentation](https://skills.sh/docs)
@@ -21,7 +30,13 @@ For more on the CLI, see:
 
 ## Factory Workflow
 
-`factory` runs a feature idea or an owner-labeled GitHub issue end to end and calls the other skills in this group for each stage. Every skill here also works on its own. The table goes from the highest level down: the orchestrator first, then the stage skills in pipeline order, then the per-item skill they delegate to.
+`factory` runs a feature idea or an owner-labeled GitHub issue end to end. To set up the workflow outside this repository, install `factory` and its companion skills together.
+
+```bash
+npx skills add https://github.com/mdjastrzebski/skills --skill factory diagnose-issue implement-idea summarize-changes fix-issues fix-issue
+```
+
+The tree shows which skills call each other. Each stage skill can also be invoked directly.
 
 ```text
 factory                  # orchestrates the run, posts the PR comments, hands off
@@ -34,12 +49,12 @@ factory                  # orchestrates the run, posts the PR comments, hands of
 
 | Skill | Summary | Install |
 | --- | --- | --- |
-| `factory` | Take a feature idea or an owner-labeled GitHub issue through approval, a draft PR, up to two review and fix rounds, and a final handoff on the PR. Uses `implement-idea`, `summarize-changes`, `fix-issues`, and `diagnose-issue` for issues. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill factory` |
-| `diagnose-issue` | Reproduce and diagnose a GitHub issue, then return a verdict with evidence, a fix plan, or a drafted reply as appropriate. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill diagnose-issue` |
-| `implement-idea` | Turn a rough idea into an approved spec and delegate the build. Interactive use reports how to test it. Pipeline mode publishes a draft PR with the approved spec and returns to the caller. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill implement-idea` |
-| `summarize-changes` | Summarize a PR, a branch, or your current changes (default: current branch against the default branch, including uncommitted changes) at the level of approach: neutral facts first (big blocks, structural decisions, assumptions, plus a suggested review order and where line-level review matters most), then a skeptical evaluation from a fresh subagent. Large changes follow a separate procedure (classify files, collapse mechanical edits, summarize blocks in parallel), with coverage stating what was read. Not a line-level review; offers to post the result as a PR comment. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill summarize-changes` |
-| `fix-issues` | Work through a list of issues, or the unresolved review comments on a GitHub PR, one by one: triage and order them (bugs first, then by severity), verify and fix each one or explain the verdict, commit each fix separately on the current branch, and summarize the results. For PR comments, interactive mode asks before fixing and before pushing and replying. Opt-in auto mode handles bugs and medium-or-higher improvements without prompts, defers low-severity improvements, and posts a round summary. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill fix-issues` |
-| `fix-issue` | Verify one reported issue or review finding, make the smallest warranted fix, and report the verdict and checks. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill fix-issue` |
+| `factory` | Take a feature idea or an owner-labeled GitHub issue through approval, a draft PR, up to two review and fix rounds, and a final handoff on the PR. Uses `implement-idea`, `summarize-changes`, `fix-issues`, and `diagnose-issue` for issues. | `npx skills add https://github.com/mdjastrzebski/skills --skill factory` |
+| `diagnose-issue` | Reproduce and diagnose a GitHub issue, then return a verdict with evidence, a fix plan, or a drafted reply as appropriate. | `npx skills add https://github.com/mdjastrzebski/skills --skill diagnose-issue` |
+| `implement-idea` | Turn a rough idea into an approved spec and delegate the build. Interactive use reports how to test it. Pipeline mode publishes a draft PR with the approved spec and returns to the caller. | `npx skills add https://github.com/mdjastrzebski/skills --skill implement-idea` |
+| `summarize-changes` | Summarize a PR, a branch, or your current changes (default: current branch against the default branch, including uncommitted changes) at the level of approach: neutral facts first (big blocks, structural decisions, assumptions, plus a suggested review order and where line-level review matters most), then a skeptical evaluation from a fresh subagent. Large changes follow a separate procedure (classify files, collapse mechanical edits, summarize blocks in parallel), with coverage stating what was read. Not a line-level review; offers to post the result as a PR comment. | `npx skills add https://github.com/mdjastrzebski/skills --skill summarize-changes` |
+| `fix-issues` | Work through a list of issues, or the unresolved review comments on a GitHub PR, one by one: triage and order them (bugs first, then by severity), verify and fix each one or explain the verdict, commit each fix separately on the current branch, and summarize the results. For PR comments, interactive mode asks before fixing and before pushing and replying. Opt-in auto mode handles bugs and medium-or-higher improvements without prompts, defers low-severity improvements, and posts a round summary. | `npx skills add https://github.com/mdjastrzebski/skills --skill fix-issues` |
+| `fix-issue` | Verify one reported issue or review finding, make the smallest warranted fix, and report the verdict and checks. | `npx skills add https://github.com/mdjastrzebski/skills --skill fix-issue` |
 
 ## Other Skills
 
@@ -49,9 +64,9 @@ Standalone skills that are not part of the factory workflow.
 
 | Skill | Summary | Install |
 | --- | --- | --- |
-| `explain` | Explain how a system, module, service, or unfamiliar codebase works by telling the story of the system: a few core concepts first, then more detail on request. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill explain` |
-| `index-codebase` | Study a whole repository and write durable agent docs to `docs/agents/` (architecture, area map, design decisions, where to look, configuration and extension, limitations, security, dev loop, contribution rules, release process), linked from `AGENTS.md`; checks and fixes any existing agent docs, and refreshes everything when the code changes. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill index-codebase` |
-| `index-github` | Assess a GitHub project before adopting or contributing to it (activity and responsiveness, maintainers and backing, maturity, alternatives, license and CLA, community, what contributions are welcome, bug hotspots) and write a dated snapshot to `docs/agents/project-health.md`, linked from `AGENTS.md`. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill index-github` |
+| `explain` | Explain how a system, module, service, or unfamiliar codebase works by telling the story of the system: a few core concepts first, then more detail on request. | `npx skills add https://github.com/mdjastrzebski/skills --skill explain` |
+| `index-codebase` | Study a whole repository and write durable agent docs to `docs/agents/` (architecture, area map, design decisions, where to look, configuration and extension, limitations, security, dev loop, contribution rules, release process), linked from `AGENTS.md`; checks and fixes any existing agent docs, and refreshes everything when the code changes. | `npx skills add https://github.com/mdjastrzebski/skills --skill index-codebase` |
+| `index-github` | Assess a GitHub project before adopting or contributing to it (activity and responsiveness, maintainers and backing, maturity, alternatives, license and CLA, community, what contributions are welcome, bug hotspots) and write a dated snapshot to `docs/agents/project-health.md`, linked from `AGENTS.md`. | `npx skills add https://github.com/mdjastrzebski/skills --skill index-github` |
 
 ## Legacy Skills
 
@@ -59,9 +74,9 @@ These skills are kept installable but are no longer recommended or actively main
 
 | Skill | Summary | Install |
 | --- | --- | --- |
-| `instrument-with-console-logs` | Add temporary `👀 DEBUG` console.log statements across changed code and surrounding lifecycle code to validate runtime behavior, then strip them again. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill instrument-with-console-logs` |
-| `react-review` | Review React and React Native code for correctness bugs rooted in effects, identity, state preservation, tree stability, and lifecycle timing. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill react-review` |
-| `trim-comments` | Review the comments in a change, delete the non-essential ones, and tighten the rest — defaults to the current PR / feature branch. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill trim-comments` |
+| `instrument-with-console-logs` | Add temporary `👀 DEBUG` console.log statements across changed code and surrounding lifecycle code to validate runtime behavior, then strip them again. | `npx skills add https://github.com/mdjastrzebski/skills --skill instrument-with-console-logs` |
+| `react-review` | Review React and React Native code for correctness bugs rooted in effects, identity, state preservation, tree stability, and lifecycle timing. | `npx skills add https://github.com/mdjastrzebski/skills --skill react-review` |
+| `trim-comments` | Review the comments in a change, delete the non-essential ones, and tighten the rest — defaults to the current PR / feature branch. | `npx skills add https://github.com/mdjastrzebski/skills --skill trim-comments` |
 
 ## Repository Layout
 
