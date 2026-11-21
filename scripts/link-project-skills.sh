@@ -51,7 +51,7 @@ for project in .claude .agents; do
         status=1
       else
         rm "$path"
-        echo "unlink $name"
+        echo "unlink $path"
       fi
     fi
   done
@@ -77,7 +77,7 @@ for project in .claude .agents; do
     else
       if [ "$problem" = wrong ]; then
         rm "$path"
-        echo "unlink $name"
+        echo "unlink $path"
       fi
       ln -s "$target" "$path"
       echo "link $path -> $target"
