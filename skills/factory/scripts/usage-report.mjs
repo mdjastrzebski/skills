@@ -18,7 +18,8 @@
  *   --prices      JSON {model: {input, output, cache_write_5m, cache_write_1h, cache_read,
  *                 long_context: {threshold, input, output, cache_write_5m, cache_write_1h,
  *                 cache_read}}} in USD per MTok, merged field by field over the built-in
- *                 Anthropic prices (long_context merges over the built-in one, if any)
+ *                 Anthropic prices (long_context merges over the built-in one, if any); key
+ *                 "<model> (fast)" prices fast-mode usage
  *   --cwd         project directory to discover transcripts for (default: current directory)
  *
  * Claude Code: $CLAUDE_CONFIG_DIR or ~/.claude, projects/<cwd slug>/<session>.jsonl plus every
@@ -37,7 +38,10 @@
  *   Never estimate a missing price. Claude messages are priced one by one: a message whose
  *   prompt (input + cache_read + cache_write tokens) exceeds the model's long_context.threshold
  *   (built in for claude-haiku-5-5: 100000) uses the long_context rates; per-model cost_usd is the
- *   sum. Codex has no tiering; its events use the base rates.
+ *   sum. Codex has no tiering; its events use the base rates. Claude messages with usage.speed
+ *   "fast" are reported as a separate model "<model> (fast)", priced only by a "<model> (fast)"
+ *   entry (built in for claude-opus-5-5 and claude-fable-5-2; supply others via --prices, else
+ *   cost null and cost_complete false). They never fall back to standard rates.
  *
  * Exit: 0 ok (models empty when nothing matched), 2 bad arguments or no transcript found.
  */
@@ -56,7 +60,11 @@ const BUILTIN_PRICES = {
     // Prompts over 100K tokens: 5x input, 5x output, same cache multipliers.
     long_context: { threshold: 100000, input: 0.5, output: 2.5, cache_write_5m: 0.625, cache_write_1h: 1, cache_read: 0.05 } },
   "claude-fable-5-2": { input: 8, output: 40, cache_write_5m: 10, cache_write_1h: 16, cache_read: 0.2 },
+  // Fast mode (usage.speed "fast") is reported under "<model> (fast)": 2x input/output, same cache_read.
+  "claude-opus-5-5 (fast)": { input: 8, output: 40, cache_write_5m: 10, cache_write_1h: 16, cache_read: 0.4 },
+  "claude-fable-5-2 (fast)": { input: 16, output: 80, cache_write_5m: 20, cache_write_1h: 32, cache_read: 0.4 },
 };
+const FAST_SUFFIX = " (fast)";
 const TOKEN_FIELDS = ["input", "output", "cache_read", "cache_write_5m", "cache_write_1h"];
 
 class UsageError extends Error {}
@@ -231,7 +239,8 @@ async function readClaude(sources, win, counters, prices) {
       src.records++;
       const key = typeof msg.id === "string" && msg.id ? msg.id : `__anon${anon++}`;
       byId.delete(key); // keep the last occurrence
-      byId.set(key, { model: msg.model, usage: msg.usage, timestamp: rec.timestamp });
+      const model = msg.usage.speed === "fast" ? msg.model + FAST_SUFFIX : msg.model;
+      byId.set(key, { model, usage: msg.usage, timestamp: rec.timestamp });
     }, counters);
   }
   const models = {};
@@ -393,10 +402,15 @@ function loadPrices(file) {
 function priceFor(table, model) {
   if (table[model]) return table[model];
   // Tolerate a trailing date or [1m]-style suffix: longest known id that prefixes the model.
+  // A fast-mode key ("<id> (fast)") only matches fast models, so fast usage never gets standard rates.
+  const fast = model.endsWith(FAST_SUFFIX);
+  const core = fast ? model.slice(0, -FAST_SUFFIX.length) : model;
   const base = Object.keys(table)
-    .filter((k) => model.startsWith(k) && /^[-@\[:_]/.test(model.slice(k.length)))
-    .sort((a, b) => b.length - a.length)[0];
-  return base ? table[base] : null;
+    .filter((k) => k.endsWith(FAST_SUFFIX) === fast)
+    .map((k) => [k, fast ? k.slice(0, -FAST_SUFFIX.length) : k])
+    .filter(([, id]) => core.startsWith(id) && /^[-@\[:_]/.test(core.slice(id.length)))
+    .sort((a, b) => b[1].length - a[1].length)[0];
+  return base ? table[base[0]] : null;
 }
 
 function costOf(usage, price) {
