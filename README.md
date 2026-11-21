@@ -25,6 +25,7 @@ For more on the CLI, see:
 
 | Skill | Summary | Install |
 | --- | --- | --- |
+| `factory` | Take a feature idea through spec approval, a draft PR, up to two review and fix rounds, and a final handoff on the PR. Uses `implement-idea`, `summarize-changes`, and `fix-issues`. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill factory` |
 | `implement-idea` | Turn a rough idea into an approved spec and delegate the build. Interactive use reports how to test it. Pipeline mode publishes a draft PR with the approved spec and returns to the caller. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill implement-idea` |
 | `fix-issue` | Verify one reported issue or review finding, make the smallest warranted fix, and report the verdict and checks. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill fix-issue` |
 | `fix-issues` | Work through a list of issues, or the unresolved review comments on a GitHub PR, one by one: triage and order them (bugs first, then by severity), verify and fix each one or explain the verdict, commit each fix separately on the current branch, and summarize the results. For PR comments, interactive mode asks before fixing and before pushing and replying. Opt-in auto mode handles bugs and medium-or-higher improvements without prompts, defers low-severity improvements, and posts a round summary. | `npx skills add https://github.com/mdjastrzebski/agent-skills --skill fix-issues` |

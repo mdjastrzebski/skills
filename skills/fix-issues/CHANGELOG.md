@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0 (2026-11-21)
+
+- Accept an explicit empty findings list in auto mode and return a zero-count round summary.
+
 ## 0.4.0 (2026-11-21)
 
 - Read GitHub feedback and post replies through GitHub MCP when gh is unavailable.
