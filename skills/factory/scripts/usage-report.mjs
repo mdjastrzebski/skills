@@ -15,8 +15,10 @@
  *                 several sessions may share the cwd; without it, another session's usage inside
  *                 the window adds a format_warnings entry
  *   --transcript  explicit JSONL file (repeatable); skips discovery, including subagents
- *   --prices      JSON {model: {input, output, cache_write_5m, cache_write_1h, cache_read}} in
- *                 USD per MTok, merged over the built-in Anthropic prices
+ *   --prices      JSON {model: {input, output, cache_write_5m, cache_write_1h, cache_read,
+ *                 long_context: {threshold, input, output, cache_write_5m, cache_write_1h,
+ *                 cache_read}}} in USD per MTok, merged field by field over the built-in
+ *                 Anthropic prices (long_context merges over the built-in one, if any)
  *   --cwd         project directory to discover transcripts for (default: current directory)
  *
  * Claude Code: $CLAUDE_CONFIG_DIR or ~/.claude, projects/<cwd slug>/<session>.jsonl plus every
@@ -32,8 +34,10 @@
  *   cache_read, cache_write_5m, cache_write_1h, messages (Claude) or events (Codex), cost_usd.
  *   Codex input excludes cached tokens. A model with no price has cost_usd null and the totals
  *   have cost_complete false, and totals.cost_usd is null (cost_usd_known sums the priced models).
- *   Never estimate a missing price. The long-context Haiku tier is
- *   ignored.
+ *   Never estimate a missing price. Claude messages are priced one by one: a message whose
+ *   prompt (input + cache_read + cache_write tokens) exceeds the model's long_context.threshold
+ *   (built in for claude-haiku-5-5: 100000) uses the long_context rates; per-model cost_usd is the
+ *   sum. Codex has no tiering; its events use the base rates.
  *
  * Exit: 0 ok (models empty when nothing matched), 2 bad arguments or no transcript found.
  */
@@ -48,7 +52,9 @@ const PRICES_AS_OF = "2026-11-03";
 const BUILTIN_PRICES = {
   "claude-opus-5-5": { input: 4, output: 20, cache_write_5m: 5, cache_write_1h: 8, cache_read: 0.2 },
   "claude-sonnet-5-5": { input: 2, output: 10, cache_write_5m: 2.5, cache_write_1h: 4, cache_read: 0.1 },
-  "claude-haiku-5-5": { input: 0.1, output: 0.5, cache_write_5m: 0.125, cache_write_1h: 0.2, cache_read: 0.01 },
+  "claude-haiku-5-5": { input: 0.1, output: 0.5, cache_write_5m: 0.125, cache_write_1h: 0.2, cache_read: 0.01,
+    // Prompts over 100K tokens: 5x input, 5x output, same cache multipliers.
+    long_context: { threshold: 100000, input: 0.5, output: 2.5, cache_write_5m: 0.625, cache_write_1h: 1, cache_read: 0.05 } },
   "claude-fable-5-2": { input: 8, output: 40, cache_write_5m: 10, cache_write_1h: 16, cache_read: 0.2 },
 };
 const TOKEN_FIELDS = ["input", "output", "cache_read", "cache_write_5m", "cache_write_1h"];
@@ -213,7 +219,7 @@ function discoverClaude(opts, cwd) {
   return [];
 }
 
-async function readClaude(sources, win, counters) {
+async function readClaude(sources, win, counters, prices) {
   const byId = new Map(); // message.id -> {model, usage, timestamp}
   let anon = 0;
   for (const src of sources) {
@@ -232,17 +238,26 @@ async function readClaude(sources, win, counters) {
   for (const { model, usage, timestamp } of byId.values()) {
     if (!win.contains(timestamp)) continue;
     const m = (models[model] ??= blankUsage());
+    const lc = priceFor(prices, model)?.long_context;
     const cc = usage.cache_creation && typeof usage.cache_creation === "object" ? usage.cache_creation : null;
-    m.input += num(usage.input_tokens);
-    m.output += num(usage.output_tokens);
-    m.cache_read += num(usage.cache_read_input_tokens);
+    const u = blankUsage();
+    u.input = num(usage.input_tokens);
+    u.output = num(usage.output_tokens);
+    u.cache_read = num(usage.cache_read_input_tokens);
     if (cc && ("ephemeral_5m_input_tokens" in cc || "ephemeral_1h_input_tokens" in cc)) {
-      m.cache_write_5m += num(cc.ephemeral_5m_input_tokens);
-      m.cache_write_1h += num(cc.ephemeral_1h_input_tokens);
+      u.cache_write_5m = num(cc.ephemeral_5m_input_tokens);
+      u.cache_write_1h = num(cc.ephemeral_1h_input_tokens);
     } else {
-      m.cache_write_5m += num(usage.cache_creation_input_tokens);
+      u.cache_write_5m = num(usage.cache_creation_input_tokens);
     }
-    m.count++;
+    u.count = 1;
+    const prompt = u.input + u.cache_read + u.cache_write_5m + u.cache_write_1h;
+    const isLong = lc && typeof lc.threshold === "number" && prompt > lc.threshold;
+    // Tokens billed at the long-context tier are also kept apart so cost can price them separately.
+    for (const k of Object.keys(u)) {
+      m[k] += u[k];
+      if (isLong) (m.long ??= blankUsage())[k] += u[k];
+    }
   }
   return { models, countKey: "messages", warnings: [] };
 }
@@ -367,7 +382,10 @@ function loadPrices(file) {
   }
   if (!user || typeof user !== "object" || Array.isArray(user)) throw new UsageError("--prices must be a JSON object keyed by model id");
   for (const [k, v] of Object.entries(user)) {
-    if (v && typeof v === "object") table[k] = { ...(table[k] ?? {}), ...v };
+    if (!v || typeof v !== "object") continue;
+    const merged = { ...(table[k] ?? {}), ...v };
+    if (table[k]?.long_context || v.long_context) merged.long_context = { ...(table[k]?.long_context ?? {}), ...(v.long_context ?? {}) };
+    table[k] = merged;
   }
   return table;
 }
@@ -383,11 +401,18 @@ function priceFor(table, model) {
 
 function costOf(usage, price) {
   if (!price) return null;
+  const lu = usage.long;
   let sum = 0;
   for (const f of TOKEN_FIELDS) {
-    if (!usage[f]) continue;
-    if (typeof price[f] !== "number") return null;
-    sum += (usage[f] * price[f]) / 1e6;
+    const base = usage[f] - (lu ? lu[f] : 0);
+    if (base) {
+      if (typeof price[f] !== "number") return null;
+      sum += (base * price[f]) / 1e6;
+    }
+    if (lu && lu[f]) {
+      if (typeof price.long_context?.[f] !== "number") return null;
+      sum += (lu[f] * price.long_context[f]) / 1e6;
+    }
   }
   return Math.round(sum * 1e6) / 1e6;
 }
@@ -442,7 +467,7 @@ async function main() {
   }
 
   const counters = { skipped_lines: 0 };
-  const { models: raw, countKey, warnings } = harness === "claude" ? await readClaude(sources, win, counters) : await readCodex(sources, win, counters);
+  const { models: raw, countKey, warnings } = harness === "claude" ? await readClaude(sources, win, counters, prices) : await readCodex(sources, win, counters);
 
   if (sources.others?.length) {
     const found = await otherSessionsInWindow(sources.others, harness, win, { skipped_lines: 0 });

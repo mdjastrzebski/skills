@@ -3,7 +3,7 @@
 ## 0.4.0 (2026-11-21)
 
 - Add an evidence-trail ledger to the PR description that links every stage's comment, review, or commit with its outcome.
-- Add per-stage Diagnostics (models, tokens, cost) to each comment and review, and a run total to the final handoff and notification, computed by the new `scripts/usage-report.mjs` from Claude Code and Codex transcripts. Never estimates missing data; unknown model prices are reported as unknown. Factory records its session id and passes it to the script so concurrent sessions in one repo are not mixed up.
+- Add per-stage Diagnostics (models, tokens, cost) to each comment and review, and a run total to the final handoff and notification, computed by the new `scripts/usage-report.mjs` from Claude Code and Codex transcripts. Never estimates missing data; unknown model prices are reported as unknown. Factory records its session id and passes it to the script so concurrent sessions in one repo are not mixed up. Claude messages over the 100K-token prompt tier of Haiku 5.5 are priced at its long-context rates.
 
 ## 0.3.0 (2026-11-21)
 
