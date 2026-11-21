@@ -3,9 +3,9 @@
 ## 0.8.0 (2026-11-21)
 
 - Give the reviewer the repo's review guidance (root `REVIEW.md`, else `AGENTS.md` or `CLAUDE.md`) from the PR's merge base so proposed changes to guidance cannot set their own review rules. Prefer a reviewer separate from the build, tag pre-existing findings, and name the reviewer and guidance in each round review.
-- Round 2 reviews only the fix commits from round 1, with the full diff as context. Pre-existing findings are not fixed in the PR; the handoff lists them under Follow-ups.
+- Round 2 reviews the fix commits from round 1 with the full PR diff as context when the reviewed head is an ancestor and the base ref and merge base still match. Otherwise it reviews the current full PR diff and rechecks the round 1 fixes. The handoff lists pre-existing findings under Follow-ups for a separate change.
 - Run one reviewer by default, on the most capable model available. Add up to three focused reviewers only when the user or the repo's review guidance asks for them, and name each reviewer and focus in the round review.
-- Round 2 uses a fresh review subagent given the range and full PR diff when the harness reviewer cannot target a commit range, and says so in the round review. The resume checkpoint now records each round's reviewed head SHA, each reviewer and its focus, and the guidance files used, so a resumed run can rebuild round 2 and the round review.
+- Round 2 uses a fresh review subagent given the range and full PR diff when the harness reviewer cannot target a commit range, and says so in the round review. The resume checkpoint records each round's reviewed comparison, round 2's scope, each reviewer and its focus, and the guidance files used.
 - Round 2 tags a finding as pre-existing only when the PR's merge base already had the problem. A problem the PR introduced that round 1 missed stays a normal finding, marked missed by round 1, instead of becoming a follow-up.
 - Use the harness reviewer only when it can take the brief and the review guidance; otherwise use a fresh review subagent given them, so the repo's guidance always reaches the reviewer.
 - The reviewer rates each finding `important` or `nit`, and Factory passes the rating to `fix-issues` so findings rated important are verified and fixed rather than deferred.
