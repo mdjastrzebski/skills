@@ -35,9 +35,12 @@
  *   parent_thread_id (or source.subagent.thread_spawn.parent_thread_id). A fork (forked_from_id
  *   only) is a user-started session: it can be the main session and is never counted as a subagent
  *   of its origin. A fork rollout may begin with a copy of the parent's history: in such a
- *   rollout, token_count events stamped before its own session_meta timestamp are ignored, and the first remaining
- *   token_count total is only a baseline (not counted), since the counter may continue from the
- *   parent's. The format is undocumented; surprises are listed in format_warnings.
+ *   rollout, token_count events stamped before its own session_meta timestamp are ignored, but the last
+ *   such total is the baseline when the first later total is >= it on every field (the counter
+ *   continues the parent's, so that first event's delta is counted). Otherwise (counter restarted,
+ *   or no copied events at all) the first later total is counted in full; the no-copied-events case
+ *   adds a format_warnings entry. Usage is never dropped silently. The format is undocumented;
+ *   surprises are listed in format_warnings.
  *
  * Output: {harness, session_id, window, sources, models, totals, prices_as_of, skipped_lines,
  *   format_warnings}. Per model: input, output, reasoning_output (Codex only, included in output),
@@ -352,6 +355,7 @@ async function readCodex(sources, win, counters) {
     let prev = null;
     let forkStart = null; // ms; token_count events before it are copied parent history
     let needBaseline = false;
+    let lastPre = null; // last copied pre-fork total
     await forEachJsonl(src.path, (rec) => {
       const p = rec.payload && typeof rec.payload === "object" ? rec.payload : null;
       if (!p) return;
@@ -367,8 +371,6 @@ async function readCodex(sources, win, counters) {
       } else if (rec.type === "event_msg" && p.type === "token_count") {
         const total = p.info && typeof p.info === "object" ? p.info.total_token_usage : null;
         if (!total || typeof total !== "object") return;
-        if (forkStart !== null && Date.parse(rec.timestamp) < forkStart) return;
-        tokenEvents++;
         const cur = {
           input: num(total.input_tokens),
           cached: num(total.cached_input_tokens),
@@ -376,11 +378,20 @@ async function readCodex(sources, win, counters) {
           reasoning: num(total.reasoning_output_tokens),
           write: num(total.cache_write_input_tokens),
         };
+        if (forkStart !== null && Date.parse(rec.timestamp) < forkStart) {
+          lastPre = cur;
+          return;
+        }
+        tokenEvents++;
         let delta = { ...cur };
         if (needBaseline) {
           needBaseline = false;
-          prev = cur;
-          return;
+          if (lastPre) {
+            // Continuing the parent's counter: baseline is the last copied total. A restarted counter is counted in full.
+            if (Object.keys(cur).every((k) => cur[k] >= lastPre[k])) prev = lastPre;
+          } else {
+            warnings.push(`${path.basename(src.path)}: fork without copied history; first token_count total counted in full (assumed a fresh counter)`);
+          }
         }
         if (prev) {
           const reset = cur.input < prev.input || cur.output < prev.output || cur.cached < prev.cached;
