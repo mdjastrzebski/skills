@@ -11,5 +11,5 @@ Use this guide before finishing changes to a skill.
 - any agent-specific metadata matches the skill
 - the root `README.md` has been updated if the skill set changed
 - version bumped once on this branch at the right level, changelog entry written, `scripts/check-versions.sh` passes
-- the skill is in the right place (`skills/` vs `skills/legacy/`) and README group
+- the skill is in the right place (`skills/` vs `skills/legacy/`) and README section (Factory Workflow if `factory` calls it, Other Skills, or Legacy Skills), with the factory call tree and top-down order still accurate
 - `.claude/skills/` and `.agents/skills/` links match `skills/` (`scripts/link-project-skills.sh --check` passes)
