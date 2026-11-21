@@ -4,6 +4,7 @@
 
 - Add an evidence-trail ledger to the PR description that links every stage's comment, review, or commit with its outcome.
 - Add per-stage Diagnostics (models, tokens, cost) to each comment and review, and a run total to the final handoff and notification, computed by the new `scripts/usage-report.mjs` from Claude Code and Codex transcripts. Never estimates missing data; unknown model prices are reported as unknown. Stage windows are contiguous, from factory invocation, so the run total equals the sum of the stages. Factory records its session id and passes it to the script so concurrent sessions in one repo are not mixed up. Claude messages over the 100K-token prompt tier of Haiku 5.5 are priced at its long-context rates, and fast-mode messages are reported as `<model> (fast)` and priced at fast rates (built in for Opus 5.5 and Fable 5.2; otherwise unknown).
+- Codex fork rollouts (`forked_from_id`) no longer double count the parent: token_count events before the fork's own `session_meta` timestamp are ignored and the first remaining total is only a baseline.
 
 ## 0.3.0 (2026-11-21)
 

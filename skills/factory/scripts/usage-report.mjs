@@ -27,8 +27,11 @@
  *   by message.id, keeping the last.
  * Codex: $CODEX_HOME or ~/.codex, sessions/**\/rollout-*.jsonl. Counts deltas of the cumulative
  *   token_count totals, attributed to the latest turn_context model. Subagent rollouts are those
- *   whose session_meta names the main session as parent_thread_id or forked_from_id. The format
- *   is undocumented; surprises are listed in format_warnings.
+ *   whose session_meta names the main session as parent_thread_id or forked_from_id. A fork
+ *   (forked_from_id) may begin with a copy of the parent's history: in such a rollout, token_count
+ *   events stamped before its own session_meta timestamp are ignored, and the first remaining
+ *   token_count total is only a baseline (not counted), since the counter may continue from the
+ *   parent's. The format is undocumented; surprises are listed in format_warnings.
  *
  * Output: {harness, session_id, window, sources, models, totals, prices_as_of, skipped_lines,
  *   format_warnings}. Per model: input, output, reasoning_output (Codex only, included in output),
@@ -319,16 +322,24 @@ async function readCodex(sources, win, counters) {
     let model = null;
     let metaModel = null;
     let prev = null;
+    let forkStart = null; // ms; token_count events before it are copied parent history
+    let needBaseline = false;
     await forEachJsonl(src.path, (rec) => {
       const p = rec.payload && typeof rec.payload === "object" ? rec.payload : null;
       if (!p) return;
       if (rec.type === "session_meta") {
         if (typeof p.model === "string") metaModel = p.model;
+        if ((p.forked_from_id || p.parent_thread_id) && forkStart === null) {
+          const t = Date.parse(p.timestamp ?? rec.timestamp);
+          if (!Number.isNaN(t)) forkStart = t;
+        }
+        if (p.forked_from_id) needBaseline = true;
       } else if (rec.type === "turn_context") {
         if (typeof p.model === "string" && p.model) model = p.model;
       } else if (rec.type === "event_msg" && p.type === "token_count") {
         const total = p.info && typeof p.info === "object" ? p.info.total_token_usage : null;
         if (!total || typeof total !== "object") return;
+        if (forkStart !== null && Date.parse(rec.timestamp) < forkStart) return;
         tokenEvents++;
         const cur = {
           input: num(total.input_tokens),
@@ -338,6 +349,11 @@ async function readCodex(sources, win, counters) {
           write: num(total.cache_write_input_tokens),
         };
         let delta = { ...cur };
+        if (needBaseline) {
+          needBaseline = false;
+          prev = cur;
+          return;
+        }
         if (prev) {
           const reset = cur.input < prev.input || cur.output < prev.output || cur.cached < prev.cached;
           if (!reset) for (const k of Object.keys(cur)) delta[k] = cur[k] - prev[k];
