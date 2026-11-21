@@ -1,13 +1,18 @@
 ---
 name: implement-idea
-description: Use when the user brings a rough idea for a feature, fix, refactor, or other change and wants it turned into a spec and built, or says "implement this idea", "I have an idea for…", "grill me on this, then build it". Runs a one-question-at-a-time clarifying interview (max 20 questions), gets the spec approved, then delegates the build to a subagent sized to the task.
+description: Use when the user brings a rough idea for a feature, fix, refactor, or other change and wants it turned into a spec and built, or says "implement this idea", "I have an idea for…", "grill me on this, then build it". Gets the spec approved, then delegates the build. Use pipeline mode when `factory` invokes the skill or the user explicitly requests it.
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # Implement Idea
 
-Turn a rough idea into an approved spec, then hand it to a subagent to build. Four phases, in order: research, grill, approve, delegate. Do not write code yourself.
+Turn a rough idea into an approved spec, then hand it to a subagent to build. Five phases, in order: research, grill, approve, delegate, deliver. Do not write code yourself.
+
+## Mode
+
+- **Interactive (default):** follow phases 1–5.
+- **Pipeline:** follow the same spec approval gate, then publish a draft PR and return the build result to the caller. Ground the idea as usual. Resolve routine questions as stated assumptions and ask only about a choice that prevents a viable spec. If the caller provides the full spec, its summary, and explicit user approval of that version, resume at phase 4. Any material spec change needs fresh approval.
 
 ## 1. Ground yourself first
 
@@ -76,6 +81,8 @@ Pick the subagent's model and reasoning effort from the spec's difficulty. Spend
 
 When in doubt between two tiers, pick the higher one. If the agent has no subagent support, implement it yourself following the same brief.
 
+In pipeline mode, do step 1 of [Pipeline delivery](#pipeline-delivery) first, so the build happens on the new branch.
+
 Give the subagent a self-contained brief — it does not see this conversation:
 
 - the approved full spec, verbatim — everything in the summary, plus what the subagent needs to build without guessing:
@@ -86,12 +93,13 @@ Give the subagent a self-contained brief — it does not see this conversation:
   - acceptance criteria as testable checks, and which tests to add
 - the relevant files, patterns, and conventions you found in phase 1
 - how to run tests, lint, and typecheck, and the instruction to run them before finishing
+- in pipeline mode, the checkout path and branch to work in
 - constraints: stay within scope, do not commit or push unless the user asked, do not ask the user questions — make the reasonable call and report it
 - what to return: files changed, a summary of the change, any deviations from the spec and why, test results, and steps to try the feature manually
 
-## 5. Report back
+## 5. Deliver the build
 
-When the subagent finishes, verify its claims briefly (look at the diff, confirm tests ran) and then report to the user concisely:
+When the subagent finishes, verify its claims briefly (look at the diff, confirm tests ran). In interactive mode, report to the user concisely:
 
 - **What changed:** two to four bullets, with key files
 - **Deviations:** anything that differs from the spec, or "none"
@@ -99,3 +107,10 @@ When the subagent finishes, verify its claims briefly (look at the diff, confirm
 - **Checks:** tests/lint/typecheck run and their result
 
 Keep it short. Don't paste the diff or repeat the spec.
+
+### Pipeline delivery
+
+1. After approval and before delegating, resolve the target GitHub repository and base branch (the caller's target or the repository default). Create a new branch from that base in a clean checkout. Use an isolated checkout if needed to preserve existing work. Keep the worker's usual restriction on committing and pushing.
+2. After verifying the build, stage only the approved build changes, commit them, and push the branch. If there is no build to publish, or a required check or publication step fails, return the blocker and the last completed step to the caller.
+3. Open a draft PR against the chosen base using authenticated `gh pr create --draft --base <base> --head <branch> --title <title> --body-file <file>` or the equivalent GitHub MCP operation. Put the approved spec summary first, then the complete approved spec inside `<details>` with a `<summary>Full spec</summary>` and blank lines around the spec. Keep local scratch paths out of the summary. Verify the draft PR and its refs. Before retrying PR creation, look up an existing PR for the same head and base.
+4. Return the PR number and URL, repository, base and head branches, build commit, checkout path, approved spec summary and full spec, deviations, checks, and steps to try the build. Continue in the calling workflow. For direct pipeline requests, return the same result to the user.
