@@ -17,6 +17,11 @@ Review guidance for this repository. It ships agent skills: prose that other age
 - Every other file the change makes stale. Search the repo for the changed skill names, step names, and modes, not only the diff.
 - `scripts/check-versions.sh` and `scripts/link-project-skills.sh --check` pass.
 
+## Review setup
+
+- One reviewer covers every focus above. Add no focused reviewers by default.
+- Rate a finding `important` when an agent following the text would do the wrong thing, even if the fix is a one-line doc edit. A stale guide, a wrong command, or a misrouting description is `important`, not a nit.
+
 ## Skip
 
 - `skills/legacy/`, unless the change touches it.

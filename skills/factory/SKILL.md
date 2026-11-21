@@ -109,6 +109,8 @@ Record which reviewer ran and which guidance files it used; the round review nam
 
 Round 1 reviews the full PR diff in depth. Round 2 reviews only the fix commits: give the reviewer the range from round 1's reviewed head SHA to the current head, with the full PR diff as context, and add to the brief: "Review only what this range changed. Check that each fix resolves its finding without regressions, and report the same class of problem anywhere this range touches. Do not repeat findings already posted on this PR." Treat a round 2 finding outside that range as pre-existing.
 
+Run one reviewer by default, on the most capable model available. Add focused reviewers only when the user asks or the review guidance lists them (for example, under a `Review setup` heading in `REVIEW.md`). The user's request overrides the guidance, and the guidance overrides this default. Give each focused reviewer the same inputs and brief plus its focus. Merge all reviewers' findings into one list. Run at most three reviewers per round, and name each reviewer and its focus in the round review.
+
 Wait for evidence that the exact diff was reviewed before proceeding. If the reviewer already posted findings, read that round's review and threads and keep their links. Collect one deduplicated list, retaining the reviewer, location, and source when available. Include any approved fix gap that still reproduces on this head, along with its reproduction, observed result, and approved plan. Keep each finding's pre-existing tag.
 
 ## 4. Fix the findings
