@@ -8,9 +8,6 @@
 
 ## 0.6.0 (2026-11-21)
 
-- Validate supplied implementation specs, show a short spec summary, clarify gaps that affect the build, and continue through the build pipeline after the user approves the spec.
-- Drop the owner-applied label check from the issue path: a user's Factory request selects the issue.
-- Return existing-PR diagnosis in chat by default. Run the PR review and fix pipeline on explicit request.
 - Give the reviewer the repo's review guidance (root `REVIEW.md`, else `AGENTS.md` or `CLAUDE.md`), prefer a reviewer separate from the build, tag pre-existing findings, and name the reviewer and guidance in each round review.
 - Round 2 reviews only the fix commits from round 1, with the full diff as context. Pre-existing findings are not fixed in the PR; the handoff lists them under Follow-ups.
 - Run one reviewer by default, on the most capable model available. Add up to three focused reviewers only when the user or the repo's review guidance asks for them, and name each reviewer and focus in the round review.
@@ -18,6 +15,12 @@
 - Round 2 tags a finding as pre-existing only when the PR's merge base already had the problem. A problem the PR introduced that round 1 missed stays a normal finding, marked missed by round 1, instead of becoming a follow-up.
 - Use the harness reviewer only when it can take the brief and the review guidance; otherwise use a fresh review subagent given them, so the repo's guidance always reaches the reviewer.
 - The reviewer rates each finding `important` or `nit`, and Factory passes the rating to `fix-issues` so findings rated important are verified and fixed rather than deferred.
+
+## 0.6.0 (2026-11-21)
+
+- Validate supplied implementation specs, show a short spec summary, clarify gaps that affect the build, and continue through the build pipeline after the user approves the spec.
+- Drop the owner-applied label check from the issue path: a user's Factory request selects the issue.
+- Return existing-PR diagnosis in chat by default. Run the PR review and fix pipeline on explicit request.
 
 ## 0.5.0 (2026-11-21)
 
