@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0 (2026-11-21)
+
+- Run Factory on an existing PR and discover its linked issue. Route remaining fix gaps through review and verify the final commit before marking a draft ready.
+
 ## 0.4.0 (2026-11-21)
 
 - Add an evidence-trail ledger to the PR description that links every stage's comment, review, or commit with its outcome. The ledger is rewritten in batches (after Build, each review round, the final handoff, and Ready) to limit PR description rewrites. It sits in a collapsed panel, and published times use the UTC `Nov 21 12:00` format.

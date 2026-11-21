@@ -30,7 +30,7 @@ For more on the CLI, see:
 
 ## Factory Workflow
 
-`factory` runs a feature idea or an owner-labeled GitHub issue end to end. To install the runtime skills in a repo or locally, install them together.
+`factory` runs a feature idea, an owner-labeled GitHub issue, or an existing GitHub PR end to end. For a PR, Factory discovers a linked issue automatically. Supply an issue alongside the PR to select the report explicitly. To install the runtime skills in a repo or locally, install them together.
 
 ```bash
 npx skills add https://github.com/mdjastrzebski/skills --skill factory diagnose-issue implement-idea summarize-changes fix-issues fix-issue
@@ -40,7 +40,7 @@ The tree shows which skills call each other. Each stage skill can also be invoke
 
 ```text
 factory                  # orchestrates the run, posts the handoff, marks the PR ready
-├── diagnose-issue       # issue path: reproduce and diagnose before approval
+├── diagnose-issue       # diagnose reports and verify candidate fix PRs
 ├── implement-idea       # spec approval and build; pipeline mode opens the draft PR
 ├── summarize-changes    # facts for the Summary 1 and Final handoff comments
 └── fix-issues           # triage and fix each review round's findings
@@ -49,8 +49,8 @@ factory                  # orchestrates the run, posts the handoff, marks the PR
 
 | Skill | Summary | Install |
 | --- | --- | --- |
-| `factory` | Take a feature idea or an owner-labeled GitHub issue through approval, a draft PR, and up to two review and fix rounds. Post the final handoff and mark the PR ready for human review. Uses `implement-idea`, `summarize-changes`, `fix-issues`, and `diagnose-issue` for issues. | `npx skills add https://github.com/mdjastrzebski/skills --skill factory` |
-| `diagnose-issue` | Reproduce and diagnose a GitHub issue, then return a verdict with evidence, a fix plan, or a drafted reply as appropriate. | `npx skills add https://github.com/mdjastrzebski/skills --skill diagnose-issue` |
+| `factory` | Take a feature idea, an owner-labeled issue, or an existing PR through approval and up to two review and fix rounds. Build a draft PR when needed, verify reported fixes on the final PR commit, and post the handoff. | `npx skills add https://github.com/mdjastrzebski/skills --skill factory` |
+| `diagnose-issue` | Diagnose a GitHub issue, verify a PR against its linked issue, or take both inputs explicitly. Compare the same reproduction on the baseline and PR head to verify the fix. | `npx skills add https://github.com/mdjastrzebski/skills --skill diagnose-issue` |
 | `implement-idea` | Turn a rough idea into an approved spec and delegate the build. Interactive use reports how to test it. Pipeline mode publishes a draft PR with the approved spec and returns to the caller. | `npx skills add https://github.com/mdjastrzebski/skills --skill implement-idea` |
 | `summarize-changes` | Summarize a PR, a branch, or your current changes (default: current branch against the default branch, including uncommitted changes) at the level of approach: neutral facts first (big blocks, structural decisions, assumptions, plus a suggested review order and where line-level review matters most), then a skeptical evaluation from a fresh subagent. Large changes follow a separate procedure (classify files, collapse mechanical edits, summarize blocks in parallel), with coverage stating what was read. Not a line-level review; offers to post the result as a PR comment. | `npx skills add https://github.com/mdjastrzebski/skills --skill summarize-changes` |
 | `fix-issues` | Work through a list of issues, or the unresolved review comments on a GitHub PR, one by one: triage and order them (bugs first, then by severity), verify and fix each one or explain the verdict, commit each fix separately on the current branch, and summarize the results. For PR comments, interactive mode asks before fixing and before pushing and replying. Opt-in auto mode handles bugs and medium-or-higher improvements without prompts, defers low-severity improvements, and posts a round summary. | `npx skills add https://github.com/mdjastrzebski/skills --skill fix-issues` |
