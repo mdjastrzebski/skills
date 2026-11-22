@@ -488,11 +488,13 @@ function keyParts(key) {
   return parts;
 }
 
+const isIndex = (part) => /^(0|[1-9]\d*)$/.test(part);
+
 function lookup(data, parts) {
   let value = data;
   for (const part of parts) {
     if (!isObject(value) && !Array.isArray(value)) return { found: false };
-    if (!has(value, part) || (Array.isArray(value) && !/^(0|[1-9]\d*)$/.test(part))) return { found: false };
+    if (!has(value, part) || (Array.isArray(value) && !isIndex(part))) return { found: false };
     value = value[part];
   }
   return { found: true, value };
@@ -511,10 +513,12 @@ function checkpoint(action, argv) {
   const last = parts.pop();
   let node = data;
   for (const part of parts) {
-    if (!has(node, part)) assign(node, part, {});
-    requireInput(isObject(node[part]), `parent of ${key} is not an object`);
+    if (Array.isArray(node)) requireInput(isIndex(part) && has(node, part), `no array element ${part} in ${key}`);
+    else if (!has(node, part)) assign(node, part, {});
+    requireInput(isObject(node[part]) || Array.isArray(node[part]), `parent of ${key} is not an object or array`);
     node = node[part];
   }
+  if (Array.isArray(node)) requireInput(isIndex(last) && Number(last) <= node.length, `invalid array index ${last} in ${key}`);
   let value = parseJson(input, key);
   if (action === "append") {
     const existing = has(node, last) ? node[last] : [];
