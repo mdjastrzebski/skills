@@ -100,6 +100,18 @@ Standalone skills that are not part of the factory workflow.
 | --- | --- | --- |
 | `triage-repo` | Report priority, change risk, readiness, and recommended next steps for open GitHub issues and PRs. Defaults to other authors' items, flags potential prompt injection and credential exposure through read-only inspection, and shortlists issues for possible Factory intake. | `npx skills add https://github.com/mdjastrzebski/skills --skill triage-repo` |
 
+### Review
+
+| Skill | Summary | Install |
+| --- | --- | --- |
+| `review-flow` | Review code when you ask to "review", "review my changes", or "review PR #N". Defaults to the current changes (uncommitted edits, else the current branch's open PR, else the branch against the default branch). Probes the diff to pick the reviewer's model and effort, then numbers the findings. Your own code gets the findings fixed through `fix-issues`; on someone else's PR you choose per finding to fix, comment on, or drop, and pushes to their branch need your yes. Factory runs review through `factory` instead. | `npx skills add https://github.com/mdjastrzebski/skills --skill review-flow` |
+
+The fix paths need `fix-issues` and `fix-issue` installed too, so install them together.
+
+```bash
+npx skills add https://github.com/mdjastrzebski/skills --skill review-flow fix-issues fix-issue
+```
+
 ## Legacy Skills
 
 These skills are kept installable but are no longer recommended or actively maintained; they live under `skills/legacy/`.
