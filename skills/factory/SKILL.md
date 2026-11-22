@@ -2,12 +2,16 @@
 name: factory
 description: Use when the user supplies a feature or change spec for implementation, or asks to run Factory on SPEC.md, a spec issue, an idea, a bug report, or an existing GitHub PR. Saved specs build or adjust their PR. PR input defaults to diagnosis in chat. Build and explicitly requested PR review runs continue through review, fixes, and handoff.
 metadata:
-  version: "0.9.0"
+  version: "0.10.0"
 ---
 
 # Factory
 
 Coordinate the pipeline. Use `diagnose-issue` for the diagnosis, `prepare-spec` for the spec, `implement-spec` for the build, `summarize-changes` for its facts, a reviewer for findings, and `fix-issues` for triage and fixes. Load companion skills from the harness or their canonical `skills/<name>/SKILL.md` in the same skills release. If a required skill or capability is unavailable, report the blocked stage and how to resume.
+
+## Model policy
+
+This applies to every subagent and harness reviewer Factory or its stage skills launch. Pick from three tiers, at the latest version the harness offers: **light** (Haiku level: Claude `haiku`, GPT `luna`), **standard** (Sonnet level: Claude `sonnet`, GPT `terra`), and **strong** (Opus level: Claude `opus`, GPT `sol`). Use light only for narrow, mechanical tasks whose output is easy to check, especially many small ones in parallel: locating files or call sites, collecting or summarizing data, describing a mechanical block of a diff, or a trivial edit with an exact pattern to copy. Never use light for specs, builds beyond trivial edits, reviews, judging findings, or security-sensitive work. Default to standard. Use low, medium, or high effort only; never `xhigh` or `max`. When a tier at high effort is not enough, move up a tier (`sonnet` → `opus`) instead of raising the effort. Strong at high effort is the ceiling. Use frontier models (Claude `fable`, GPT `astra`) or `xhigh` and higher effort only when the user explicitly asks for them in this run. Set the model and effort explicitly on each launch rather than inheriting the session's, because the session may run on a frontier model. If the harness cannot set them, use the closest option within the policy and record the difference in the stage's entry. A harness reviewer that takes an effort level (such as `code-review`) runs at `high` or lower.
 
 ## Select the path
 
@@ -149,7 +153,7 @@ On Adjust, the first round reviews the range from the recorded pre-build head to
 
 In either round 2 scope, check that each round 1 fix still resolves its finding without regressions. Report the current outcome of previously posted findings for their existing threads. Tag a finding as pre-existing only if the current PR's merge base already had the problem. If a newly reported problem was introduced by the PR and was already present in round 1's reviewed diff, mark it as missed by round 1 and keep it as a normal finding.
 
-Run one reviewer by default, on the most capable model available. Add focused reviewers only when the user asks or the review guidance lists them (for example, under a `Review setup` heading in `REVIEW.md`). The user's request overrides the guidance, and the guidance overrides this default. Give each focused reviewer the same inputs and brief plus its focus. Merge all reviewers' findings into one list. Run at most three reviewers per round, and name each reviewer and its focus in the round review.
+Run one reviewer by default, on the strong tier at high effort (see [Model policy](#model-policy)). Add focused reviewers only when the user asks or the review guidance lists them (for example, under a `Review setup` heading in `REVIEW.md`). The user's request overrides the guidance, and the guidance overrides this default. Give each focused reviewer the same inputs and brief plus its focus. Merge all reviewers' findings into one list. Run at most three reviewers per round, and name each reviewer and its focus in the round review.
 
 Wait for evidence that the exact diff was reviewed before proceeding. If the reviewer already posted findings, read that round's review and threads and keep their links. Collect one deduplicated list, retaining the reviewer, location, and source when available. Include any approved fix gap that still reproduces on this head, along with its reproduction, observed result, and approved plan. Keep each finding's rating and pre-existing tag.
 

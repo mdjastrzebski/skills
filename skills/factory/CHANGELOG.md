@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.0 (2026-11-22)
+
+- Set an explicit model and effort policy for every subagent and reviewer Factory launches: Sonnet level (`sonnet`/`terra`) by default, Opus level (`opus`/`sol`) at high effort for the reviewer, never `xhigh` or `max`, and frontier models (`fable`, `astra`) only when you explicitly ask.
+- Allow Haiku-level models (`haiku`/`luna`) only for narrow, mechanical, easily checked subtasks; never for specs, reviews, or judging findings.
+
 ## 0.9.0 (2026-11-22)
 
 - Use a saved spec to build a draft PR, adjust its existing PR, or report that the PR already matches.

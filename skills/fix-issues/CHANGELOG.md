@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.7.0 (2026-11-22)
+
+- Run each fix worker on an explicit model and effort: Sonnet level at medium (high for subtle or cross-cutting issues), Opus level when high is not enough, never `xhigh` or `max`, and frontier models (`fable`, `astra`) only when you explicitly ask.
+- Allow Haiku-level workers for nits whose verification and fix are mechanical, such as a typo, rename, formatting, or stale comment.
+
 ## 0.6.0 (2026-11-21)
 
 - Auto mode records findings the caller tags as pre-existing as `FOLLOW_UP` instead of fixing them, even when rated `important`, so they land in a separate change.

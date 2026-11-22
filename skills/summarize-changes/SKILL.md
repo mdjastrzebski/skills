@@ -2,7 +2,7 @@
 name: summarize-changes
 description: Use when the user asks to summarize, explain, or get an overview of a PR, branch, or their current changes — "what does this PR do", "summarize my branch", "big picture of these changes", "is this the right approach" — before or instead of a detailed code review. Defaults to the current branch against the default branch, including uncommitted changes; also takes a PR number or URL, or a branch name. Not for line-level code review.
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
 ---
 
 # Summarize Changes
@@ -47,7 +47,7 @@ The facts must serve two readers: the human, and the evaluator in stage 2. Final
 
 ## 3. Stage 2: evaluation (fresh subagent)
 
-Spawn one subagent, after the facts are final. Brief it with:
+Spawn one subagent, after the facts are final, on the strong tier (Opus level: Claude `opus`, GPT `sol`, latest version) at medium or high effort. Never use `xhigh` or `max` effort, or frontier models (Claude `fable`, GPT `astra`), unless the user explicitly asks for them. Set the model and effort explicitly rather than inheriting the session's. Brief it with:
 
 - the facts section, verbatim
 - how to get the diff: base and head refs, PR number, and whether uncommitted changes are included (and that they are in the working tree)

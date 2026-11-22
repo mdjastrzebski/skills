@@ -2,7 +2,7 @@
 name: implement-spec
 description: Use when the user asks to build a spec or fix plan, or when `prepare-spec` or Factory hands off an approved spec to build. Runs the build in a subagent sized to the spec's difficulty. Interactive by default; use pipeline mode when Factory invokes the skill or the user explicitly requests a draft PR. Input that is not an approved spec goes through `prepare-spec` first.
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
 ---
 
 # Implement Spec
@@ -30,17 +30,19 @@ If the input has no build estimate (for example a diagnosed fix plan), rate it y
 
 ## 2. Pick the builder
 
-Use the recommended model and effort. A user override wins. Without a recommendation, size the build:
+Use the recommended model and effort. A user override wins. A recommendation outside the policy below is capped to strong at high effort unless the user explicitly asked for it; record the change. Without a recommendation, size the build:
 
 | Difficulty | Signals | Pick (Claude Code example) |
 | --- | --- | --- |
-| Simple | one or two files, clear pattern to copy, low risk (copy change, config flag, small UI tweak, obvious bug fix) | economical model, low–medium effort — e.g. `haiku`, or `sonnet` at medium |
-| Moderate | several files in one area, new but conventional logic, some tests to write | `sonnet` at medium–high effort |
-| Hard | cross-cutting or architectural change, concurrency, data migrations, security-sensitive code, subtle algorithms, unfamiliar or poorly structured code | most capable model, high effort — e.g. `opus` at high |
+| Simple | one or two files, clear pattern to copy, low risk (copy change, config flag, small UI tweak, obvious bug fix) | standard tier, low–medium effort — e.g. `sonnet` at low or medium; light tier (`haiku` at medium) only for a purely mechanical edit with an exact pattern to copy and a check that proves it |
+| Moderate | several files in one area, new but conventional logic, some tests to write | standard tier at high effort, or strong tier at medium — e.g. `sonnet` at high |
+| Hard | cross-cutting or architectural change, concurrency, data migrations, security-sensitive code, subtle algorithms, unfamiliar or poorly structured code | strong tier, high effort — e.g. `opus` at high |
 
 When in doubt between two tiers, pick the higher one.
 
-Launch the subagent with that model and effort set explicitly on the subagent call. If the harness cannot set the model or the effort, use the closest available option and record the difference. If the agent has no subagent support, implement the spec yourself following the same brief and record that no sized subagent ran. Report the model and effort that actually ran, not only the one requested.
+Pick from three tiers, at the latest version the harness offers: **light** (Haiku level: Claude `haiku`, GPT `luna`), **standard** (Sonnet level: Claude `sonnet`, GPT `terra`), and **strong** (Opus level: Claude `opus`, GPT `sol`). Use light only for narrow, mechanical tasks whose output is easy to check, especially many small ones in parallel: locating files or call sites, collecting or summarizing data, describing a mechanical block of a diff, or a trivial edit with an exact pattern to copy. Never use light for specs, builds beyond trivial edits, reviews, judging findings, or security-sensitive work. Default to standard. Use low, medium, or high effort only; never `xhigh` or `max`. When a tier at high effort is not enough, move up a tier (`sonnet` → `opus`) instead of raising the effort. Strong at high effort is the ceiling. Use frontier models (Claude `fable`, GPT `astra`) or `xhigh` and higher effort only when the user explicitly asks for them in this run.
+
+Launch the subagent with that model and effort set explicitly on the subagent call. Never let the builder inherit the session's model or effort. If the harness cannot set the model or the effort, use the closest option within the policy and record the difference. If the agent has no subagent support, implement the spec yourself following the same brief and record that no sized subagent ran. Report the model and effort that actually ran, not only the one requested.
 
 ## 3. Brief the builder
 
