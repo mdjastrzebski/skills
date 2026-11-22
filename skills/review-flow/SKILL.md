@@ -17,8 +17,8 @@ If a workflow or calling agent (such as `factory`) invokes this skill with its o
 
 - A PR number or URL is that PR. A named branch is that branch against the default branch.
 - With no target: uncommitted changes present → local target, the working tree (committed and uncommitted changes) against the merge base with the default branch; else an open PR for the current branch → that PR; else the current branch against the default branch.
-- For a PR, record the number, URL, author login, head repository and branch, head SHA, base ref, and merge-base SHA. For local and branch targets, record the head SHA (plus "uncommitted changes" when present), the default branch, and the merge-base SHA.
-- Identify "me": the authenticated GitHub login (`gh api user`, or MCP `get_me`). Local targets and branch targets without a PR are always the user's own code. If the login cannot be resolved for a PR, treat the PR as someone else's.
+- For a PR, record the number, URL, author login, head repository and branch, head SHA, base ref, and merge-base SHA. For local and branch targets, record the head SHA (plus "uncommitted changes" when present), the default branch, and the merge-base SHA, then look up an open PR whose head is that branch (`gh pr list --head <branch>`, or the MCP equivalent). If one exists, also record its number, URL, author login, and head repository and branch. The diff stays the local or branch comparison. If the lookup fails, say so and treat the target as having no PR.
+- Identify "me": the authenticated GitHub login (`gh api user`, or MCP `get_me`). Local and branch targets without an open PR are always the user's own code. Any PR, whether it is the target or was recorded for a local or branch target, is the user's own only when its author is me. If the login cannot be resolved for a PR, treat the PR as someone else's.
 
 ## 2. Pick the mode
 
@@ -26,7 +26,7 @@ First match wins:
 
 1. Caller brief: findings only (see Caller mode).
 2. The user's own words. "Review only" or "just tell me" is **report**: findings in chat, nothing fixed or posted. "Just comment" or "comment only" is **comment all**: every finding is commented, nothing is fixed. "Review and fix" is **fix all**, still subject to the push rule for someone else's PR. Read equivalent plain wording the same way.
-3. Local target, or PR author is me: **fix**.
+3. No open PR (local or branch target), or PR author is me: **fix**.
 4. Otherwise: **ask**.
 
 ## 3. Probe, then review
@@ -65,7 +65,7 @@ Record one probe line for the findings header and the review body, for example `
 
 **Auto mode.** `fix-issues` runs in auto mode only when the user explicitly requests it. Here that request is the user's own: asking to review their own code, or choosing "fix" or asking to "review and fix" on someone else's PR, counts as the explicit request for `fix-issues` auto mode. Always pass `auto` explicitly as its mode, never rely on its default, and never invoke it from the report, comment, or caller paths.
 
-**No findings.** In a cloud session (`CLAUDE_CODE_REMOTE=true`, or a Codex cloud task) with a PR target, post a brief `COMMENT` review: "No findings", the reviewed SHA, the guidance used, and the probe line. Otherwise report the clean result in chat. In report mode, always chat only.
+**No findings.** In a cloud session (`CLAUDE_CODE_REMOTE=true`, or a Codex cloud task) with a PR (target or recorded), post a brief `COMMENT` review: "No findings", the reviewed SHA, the guidance used, and the probe line. Otherwise report the clean result in chat. In report mode, always chat only.
 
 **Report mode.** Print the numbered findings (format below) and stop.
 
@@ -75,7 +75,7 @@ Record one probe line for the findings header and the review body, for example `
 2. Make sure the checkout is on the target branch at the reviewed head (for a PR, its head branch). If that cannot be done safely, report the findings and the blocker, then stop.
 3. Run `fix-issues` with `auto` passed explicitly as its mode, round `1`, as a pasted-list run. Pass every finding with its #ID, rating, and pre-existing tag. Its rules apply unchanged: `important` findings are dispatched, low-severity improvements may be deferred, pre-existing findings become follow-ups. It commits one fix per issue and does not push or reply.
 4. Map its verdict table back to the #IDs (by the order and text you passed).
-5. PR target: push the branch, then post one `COMMENT` review (see Publishing). Local or branch target without a PR: print the outcome summary in chat.
+5. PR (target or recorded for the local or branch target): push the branch, then post one `COMMENT` review (see Publishing). No PR: print the outcome summary in chat.
 
 **Ask mode (someone else's PR).**
 
