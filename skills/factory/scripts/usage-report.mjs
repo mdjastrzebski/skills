@@ -43,8 +43,11 @@
  *   adds a format_warnings entry. Usage is never dropped silently. The format is undocumented;
  *   surprises are listed in format_warnings.
  *
- * Output: {harness, session_id, window, sources, models, totals, prices_as_of, skipped_lines,
- *   format_warnings}. Per model: input, output, reasoning_output (Codex only, included in output),
+ * Output: {harness, session_id, window, sources, by_source, models, totals, prices_as_of,
+ *   skipped_lines, format_warnings}. by_source has one entry per transcript with its role, the
+ *   Factory launch label (factory:<run>:<agent>, from a Claude Code agent-<id>.meta.json
+ *   description or the first label stamped at or after the rollout's own session_meta start, else null), the
+ *   requested model when the harness records it, and that transcript's models and totals. Per model: input, output, reasoning_output (Codex only, included in output),
  *   cache_read, cache_write_5m, cache_write_1h, messages (Claude) or events (Codex), cost_usd.
  *   Codex input excludes cached tokens. A model with no price has cost_usd null and the totals
  *   have cost_complete false, and totals.cost_usd is null (cost_usd_known sums the priced models).
@@ -265,13 +268,14 @@ async function readClaude(sources, win, counters, prices) {
       const key = typeof msg.id === "string" && msg.id ? msg.id : `__anon${anon++}`;
       byId.delete(key); // keep the last occurrence
       const model = msg.usage.speed === "fast" ? msg.model + FAST_SUFFIX : msg.model;
-      byId.set(key, { model, usage: msg.usage, timestamp: rec.timestamp });
+      byId.set(key, { model, usage: msg.usage, timestamp: rec.timestamp, src });
     }, counters);
   }
   const models = {};
-  for (const { model, usage, timestamp } of byId.values()) {
+  for (const { model, usage, timestamp, src } of byId.values()) {
     if (!win.contains(timestamp)) continue;
     const m = (models[model] ??= blankUsage());
+    const sm = ((src.models ??= {})[model] ??= blankUsage());
     const lc = priceFor(prices, model)?.long_context;
     const cc = usage.cache_creation && typeof usage.cache_creation === "object" ? usage.cache_creation : null;
     const u = blankUsage();
@@ -289,8 +293,10 @@ async function readClaude(sources, win, counters, prices) {
     const isLong = lc && typeof lc.threshold === "number" && prompt > lc.threshold;
     // Tokens billed at the long-context tier are also kept apart so cost can price them separately.
     for (const k of Object.keys(u)) {
-      m[k] += u[k];
-      if (isLong) (m.long ??= blankUsage())[k] += u[k];
+      for (const target of [m, sm]) {
+        target[k] += u[k];
+        if (isLong) (target.long ??= blankUsage())[k] += u[k];
+      }
     }
   }
   return { models, countKey: "messages", warnings: [] };
@@ -428,13 +434,14 @@ async function readCodex(sources, win, counters) {
         if (!win.contains(rec.timestamp)) return;
         if (!delta.input && !delta.output && !delta.cached && !delta.reasoning && !delta.write) return;
         const name = model ?? metaModel ?? "unknown";
-        const m = (models[name] ??= blankUsage());
-        m.input += Math.max(0, delta.input - delta.cached);
-        m.output += Math.max(0, delta.output);
-        m.reasoning_output += Math.max(0, delta.reasoning);
-        m.cache_read += Math.max(0, delta.cached);
-        m.cache_write_5m += Math.max(0, delta.write);
-        m.count++;
+        for (const m of [(models[name] ??= blankUsage()), ((src.models ??= {})[name] ??= blankUsage())]) {
+          m.input += Math.max(0, delta.input - delta.cached);
+          m.output += Math.max(0, delta.output);
+          m.reasoning_output += Math.max(0, delta.reasoning);
+          m.cache_read += Math.max(0, delta.cached);
+          m.cache_write_5m += Math.max(0, delta.write);
+          m.count++;
+        }
         src.records++;
       }
     }, counters);
@@ -548,6 +555,71 @@ function detectHarness(opts, cwd) {
   return null;
 }
 
+// ---------- per-source usage ----------
+
+const LABEL = /factory:[A-Za-z0-9]+:[A-Za-z0-9._-]+/;
+
+// Factory labels each launch. Claude Code keeps the launch description in agent-<id>.meta.json;
+// otherwise (and for Codex) use the first label stamped at or after the transcript's own start (a forked child replays its parent's history, which may carry the parent's label).
+function sourceLabel(src, harness) {
+  if (src.role === "main") return { label: null, requested_model: null };
+  if (harness === "claude") {
+    try {
+      const meta = JSON.parse(fs.readFileSync(src.path.replace(/\.jsonl$/, ".meta.json"), "utf8"));
+      const label = typeof meta.description === "string" ? LABEL.exec(meta.description)?.[0] : null;
+      if (label) return { label, requested_model: typeof meta.model === "string" ? meta.model : null };
+    } catch {
+      // fall through to the transcript scan
+    }
+  }
+  try {
+    return { label: ownLaunchLabel(fs.readFileSync(src.path, "utf8")), requested_model: null };
+  } catch {
+    return { label: null, requested_model: null };
+  }
+}
+
+// A forked child rollout replays the parent's history, which can hold the parent's own label.
+// Only a label stamped at or after the child's own session_meta start is its launch label.
+function ownLaunchLabel(text) {
+  let start = null;
+  let lines = 0;
+  for (const line of text.split("\n")) {
+    if (!line.trim()) continue;
+    let rec;
+    try { rec = JSON.parse(line); } catch { rec = null; }
+    if (rec && rec.type === "session_meta" && start === null) {
+      const t = Date.parse((rec.payload && rec.payload.timestamp) ?? rec.timestamp);
+      if (!Number.isNaN(t)) start = t;
+      continue;
+    }
+    const label = LABEL.exec(line)?.[0];
+    const at = Date.parse(rec && rec.timestamp);
+    const inherited = start !== null && !Number.isNaN(at) && at < start;
+    if (!inherited && ++lines > 200) return null; // the launch message opens the child's own records
+    if (!label || inherited) continue;
+    return label;
+  }
+  return null;
+}
+
+function sourceUsage(src, harness, countKey, prices) {
+  const models = {};
+  const total = blankUsage();
+  let cost = 0;
+  let complete = true;
+  for (const name of Object.keys(src.models ?? {}).sort()) {
+    const u = src.models[name];
+    const c = costOf(u, priceFor(prices, name));
+    if (c === null) complete = false;
+    else cost += c;
+    models[name] = shape(u, countKey, harness, c);
+    for (const k of Object.keys(total)) total[k] += u[k];
+  }
+  const totals = shape(total, countKey, harness, complete ? Math.round(cost * 1e6) / 1e6 : null);
+  return { path: src.path, role: src.role, ...sourceLabel(src, harness), models, totals };
+}
+
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
   if (opts.help) {
@@ -610,6 +682,7 @@ async function main() {
     session_id: sources.find((s) => s.session_id)?.session_id ?? null,
     window: { since: win.since, until: win.until },
     sources: sources.map((s) => ({ path: s.path, role: s.role, records: s.records })),
+    by_source: sources.map((s) => sourceUsage(s, harness, countKey, prices)),
     models,
     totals,
     prices_as_of: PRICES_AS_OF,

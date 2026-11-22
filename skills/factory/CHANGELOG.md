@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.12.0 (2026-11-22)
+
+- Read only a spec issue's title and record line, and pass pinned spec files by path between agents.
+- Pass the approved plan or scope to diagnosis reviewers by path and use the same saved-spec publication layout for legacy revisions.
+- Match PRs by their `spec-built` block, take Adjust's previous revision from the issue's superseded-revision comment, and preserve the build record and embedded spec when refreshing the PR description's implementation summary at handoff.
+- Rename review rounds to "Review Round N" and post them as labelled bullets plus a Finding, Severity, Difficulty, Verdict and Commit table with linkable SHAs.
+- Show the recorded orchestrator model when transcript usage is unavailable.
+- Log every subagent launch with a label and show, in each Diagnostics block, the agent tree with models, effort, work, tokens and cost, using `N/A` where usage or prices are missing.
+- Pass owners their agent ID, run ID and an agent-log path so their workers are logged, record what the orchestrator did in each stage, and recheck the spec store at handoff with `pin`.
+- Move Where to look first, Deferred, Follow-ups and Open questions from the Final handoff comment to a `## Reviewer notes` section at the end of the PR description, and replace the handoff's verdict table with one line per Review Round.
+- Write finding IDs on GitHub as `F1` instead of `#1`, which GitHub links to issues.
+- Replace the PR description's Evidence trail with a collapsed Diagnostics block for the Spec or Diagnosis, Build and Summary 1 stages (`factory.mjs pr-diagnostics`), with a run total; Summary 1 no longer carries Diagnostics. Preserve prior Diagnostics and legacy Evidence trail in the panel across Adjust and resume.
+- Drop the rule against generated-by footers and co-author trailers, which harness tools add regardless.
+- Write **Checks:** as a bullet list, one check per bullet, with a `Not run:` bullet for skipped checks.
+- Drop the Summary 1 comment: the PR description's summary replaces it, and diagnosis evidence goes in its Reviewer notes. Keep the author's summary during existing PR review and put updated facts and checks in the Final handoff comment.
+- Link review table findings to their inline comments by updating the review body after submission, since GitHub assigns the comment URLs only then.
+- Attribute Codex subagent usage by the launch label stamped after the rollout's own start, so a forked child no longer takes its parent's inherited label.
+- Stop refreshing a PR's `## Summary` at the collapsed block that follows it, so a diagnosed fix's embedded plan stays intact.
+
 ## 0.11.0 (2026-11-22)
 
 - Use stage owners when the harness supports nested subagents, with automatic flat and inline fallbacks.

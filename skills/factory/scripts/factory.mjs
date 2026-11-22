@@ -3,19 +3,26 @@
  * Factory local bookkeeping. Node 18+, no GitHub or network access.
  *
  * node factory.mjs diagnostics --stage NAME --usage FILE [--usage FILE]... --out FILE
- * node factory.mjs ledger --body FILE --rows FILE --out FILE
+ *     [--agents FILE] [--mode MODE] [--work TEXT]
+ * node factory.mjs agent add --file FILE --stage NAME --id ID --role TEXT --model MODEL
+ *     --effort EFFORT [--parent ID] [--run RUN]
+ * node factory.mjs agent done --file FILE --id ID --work TEXT [--stopped]
+ * node factory.mjs agent merge --file FILE --from FILE
+ * node factory.mjs pr-diagnostics --body FILE --file CHECKPOINT --stage NAME [--stage NAME]... --out FILE
  * node factory.mjs section --body FILE --heading TEXT [--match-prefix] --content FILE --out FILE
  * node factory.mjs review --commit SHA --body FILE --comments FILE --diff FILE --out FILE
  * node factory.mjs checkpoint get --file FILE [KEY]
  * node factory.mjs checkpoint set --file FILE KEY VALUE_JSON
  * node factory.mjs checkpoint append --file FILE KEY VALUE_JSON
  * node factory.mjs stage open --file FILE --stage NAME
- * node factory.mjs stage close --file FILE --stage NAME [--until ISO]
+ * node factory.mjs stage close --file FILE --stage NAME [--until ISO] [--work TEXT]
  *     [--session-id ID] [--transcript PATH]...
  * node factory.mjs compare snapshot --head SHA --base-ref REF --base-sha SHA
  * node factory.mjs compare same --a JSON --b JSON
  * node factory.mjs compare range --round1 JSON --current JSON
  * node factory.mjs verify-commits --from SHA --to SHA --rows FILE
+ *
+ * Tests for agent, diagnostics and usage-report by_source: node scripts/diagnostics.test.mjs
  *
  * Commands return one JSON object. Exit 2 for invalid input, 1 for operational errors.
  * A completed verification may return ok:false with exit 0 to report its findings.
@@ -29,8 +36,12 @@ import { fileURLToPath } from "node:url";
 
 class UsageError extends Error {}
 
+const diagnosticsStart = "<!-- factory-diagnostics:start -->";
+const diagnosticsEnd = "<!-- factory-diagnostics:end -->";
+const diagnosticsHistoryStart = "<!-- factory-diagnostics:history -->";
 const evidenceStart = "<!-- evidence-trail:start -->";
-const evidenceEnd = "<!-- evidence-trail:end -->";
+const markerPairs = [[diagnosticsStart, diagnosticsEnd], [evidenceStart, "<!-- evidence-trail:end -->"]];
+const markerLines = new Set(markerPairs.flat());
 const tokenFields = ["input", "output", "cache_read", "cache_write_5m", "cache_write_1h"];
 const comparisonFields = ["head", "base_ref", "merge_base"];
 const has = (object, key) => Object.hasOwn(object, key);
@@ -155,8 +166,38 @@ function readUsage(report) {
   return { ...report, window: { since, until } };
 }
 
-function diagnosticsBlock(stage, files) {
+function compact(value) {
+  if (value >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
+  if (value >= 1e3) return `${Math.round(value / 1e3)}k`;
+  return String(value);
+}
+
+function tokensOf(row) {
+  return tokenFields.reduce((sum, field) => sum + (row?.[field] ?? 0), 0);
+}
+
+function agentRows(agents, stage) {
+  if (agents == null) return [];
+  requireInput(Array.isArray(agents), "agents must be an array");
+  for (const agent of agents) {
+    requireInput(isObject(agent) && isText(agent.id) && isText(agent.label) && isText(agent.stage) && isText(agent.role),
+      "invalid agent entry (expected id, label, stage and role)");
+  }
+  return agents.filter((agent) => agent.stage === stage)
+    .sort((a, b) => String(a.started_at ?? "").localeCompare(String(b.started_at ?? "")));
+}
+
+function ranModel(requested, models) {
+  if (!models.length) return requested ?? "unknown";
+  const ran = models.join(", ");
+  if (!requested || models.some((model) => model.toLowerCase().includes(requested.toLowerCase()))) return ran;
+  return `${ran} (asked ${requested})`;
+}
+
+function diagnosticsBlock(stage, files, { agents = null, mode = null, work = null, rootModel = null } = {}) {
+  const logged = agentRows(agents, stage);
   let reports;
+  let failure = null;
   try {
     reports = files.map((file) => readUsage(readJson(file)));
     for (const { models, totals } of reports) {
@@ -167,14 +208,20 @@ function diagnosticsBlock(stage, files) {
     }
   } catch (error) {
     if (!(error instanceof UsageError)) throw error;
-    return unavailable(error.message);
+    if (!logged.length && !mode && !rootModel) return unavailable(error.message);
+    failure = error.message;
+    reports = [];
   }
   const models = new Map();
   const sources = new Map();
-  let since = reports[0].window.since;
-  let until = reports[0].window.until;
-  let prices = reports[0].prices_as_of;
-  const totals = sumUsage(reports.map((report) => report.totals));
+  const byLabel = new Map();
+  const main = [];
+  const loose = [];
+  const labels = new Set(logged.map((agent) => agent.label));
+  let since = reports[0]?.window.since;
+  let until = reports[0]?.window.until;
+  let prices = reports[0]?.prices_as_of;
+  const totals = reports.length ? sumUsage(reports.map((report) => report.totals)) : null;
   for (const report of reports) {
     if (report.window.since < since) since = report.window.since;
     if (report.window.until > until) until = report.window.until;
@@ -188,25 +235,112 @@ function diagnosticsBlock(stage, files) {
       if (!models.has(model)) models.set(model, []);
       models.get(model).push(row);
     }
+    for (const source of Array.isArray(report.by_source) ? report.by_source : []) {
+      if (!isObject(source) || !isObject(source.totals)) continue;
+      if (source.role === "main") main.push(source);
+      else if (isText(source.label) && labels.has(source.label)) {
+        if (!byLabel.has(source.label)) byLabel.set(source.label, []);
+        byLabel.get(source.label).push(source);
+      } else if (tokensOf(source.totals) > 0) loose.push(source);
+    }
   }
   const names = [...models.keys()].sort();
-  const rows = names.map((model) => {
-    const row = sumUsage(models.get(model));
-    return usageRow(markdownCell(model), row, row.cost_usd === null ? `unknown (no price for ${markdownCell(model)})` : dollars(row.cost_usd));
-  });
+  const usageCells = (parts) => {
+    if (!reports.length) return ["N/A", "N/A"];
+    if (!parts.length) return ["N/A", "N/A"];
+    const row = sumUsage(parts.map((part) => part.totals));
+    return [compact(tokensOf(row)), row.cost_usd === null ? "N/A" : dollars(row.cost_usd)];
+  };
+  const modelsOf = (parts) => [...new Set(parts.flatMap((part) => Object.keys(part.models ?? {})))].sort();
+  const number = new Map(logged.map((agent, index) => [agent.id, index + 2]));
+  const rows = [
+    ["1", "Orchestrator", "—", `${markdownCell(modelsOf(main).join(", ") || rootModel || "unknown")} · —`, isText(work) ? markdownCell(work) : "—", ...usageCells(main)],
+    ...logged.map((agent, index) => {
+      const parts = byLabel.get(agent.label) ?? [];
+      const effort = isText(agent.requested_effort) ? agent.requested_effort : "—";
+      const work = isText(agent.work) ? agent.work : (agent.ended_at ? "—" : "running");
+      return [String(index + 2), markdownCell(agent.role), String(number.get(agent.parent) ?? 1),
+        `${markdownCell(ranModel(agent.requested_model, modelsOf(parts)))} · ${markdownCell(effort)}`,
+        markdownCell(agent.status === "stopped" ? `stopped: ${work}` : work), ...usageCells(parts)];
+    }),
+  ];
+  if (loose.length) rows.push(["", "Unattributed", "", markdownCell(modelsOf(loose).join(", ") || "—"), "", ...usageCells(loose)]);
+  const totalTokens = totals ? tokensOf(totals) : null;
+  const totalCost = totals && totals.cost_usd !== null ? dollars(totals.cost_usd) : "N/A";
+  rows.push(["", "**Total**", "", "", "", `**${totalTokens === null ? "N/A" : compact(totalTokens)}**`, `**${totalCost}**`]);
+  const unmatched = logged.filter((agent) => !byLabel.has(agent.label)).length;
   const source = [...sources].map(([harness, paths]) => {
-    return `${harness === "claude" ? "Claude Code" : "Codex"} transcript (main + ${paths.size} subagents)`;
+    return `${harness === "claude" ? "Claude Code" : "Codex"} transcripts (main + ${paths.size} subagents)`;
   }).join(" + ");
+  const usageLine = failure
+    ? `Usage: N/A (${markdownCell(failure)})`
+    : `Usage: ${source} · prices as of ${formatDate.format(new Date(prices))}${unmatched ? ` · ${unmatched} agent(s) without a matching transcript` : ""}`;
+  const byModel = names.map((model) => {
+    const row = sumUsage(models.get(model));
+    return `${markdownCell(model)} ${row.cost_usd === null ? "N/A" : row.cost_usd.toFixed(2)}`;
+  });
+  const summary = [stage, mode ?? "mode unknown", `${logged.length} agent${logged.length === 1 ? "" : "s"}`, totalCost].join(" · ");
   const block = [
-    `<details><summary>Diagnostics — ${stage}</summary>`, "",
-    "| Model | Input | Output | Cache read | Cache write | Cost (USD) |",
-    "| --- | ---: | ---: | ---: | ---: | ---: |", ...rows,
-    usageRow("**Total**", totals, `**${totals.cost_usd === null ? "unknown" : dollars(totals.cost_usd)}**`), "",
-    `Window: ${formatWindow(since, until)} · Source: ${source} · Prices as of ${formatDate.format(new Date(prices))}`,
+    `<details><summary>Diagnostics — ${markdownCell(summary)}</summary>`, "",
+    `- Mode: ${markdownCell(mode ?? "unknown")}${mode === "inline" ? " (no subagents)" : ""}`,
+    ...(since ? [`- Window: ${formatWindow(since, until)}`] : []),
+    `- ${usageLine}`, "",
+    "| # | Agent | Launched by | Model · effort | Work | Tokens | Cost |",
+    "| --- | --- | --- | --- | --- | ---: | ---: |",
+    ...rows.map((row) => `| ${row.join(" | ")} |`), "",
+    ...(byModel.length ? [`By model (USD): ${byModel.join(" · ")}`, ""] : []),
     "</details>", "",
   ].join("\n");
-  const tokens = tokenFields.reduce((sum, field) => sum + totals[field], 0);
-  return { available: true, models: names, tokens, cost_usd: totals.cost_usd, block };
+  if (failure) return { available: false, reason: failure, models: [], tokens: null, cost_usd: null, agents: logged.length, block };
+  return { available: true, models: names, tokens: totalTokens, cost_usd: totals.cost_usd, agents: logged.length, block };
+}
+
+function agentLog(data) {
+  data.agents ??= [];
+  requireInput(Array.isArray(data.agents), "agents must be an array");
+  return data.agents;
+}
+
+function agent(action, argv) {
+  const spec = {
+    add: { required: ["file", "stage", "id", "role", "model", "effort"], optional: ["parent", "run"] },
+    done: { required: ["file", "id", "work"], switches: ["stopped"] },
+    merge: { required: ["file", "from"] },
+  }[action];
+  const { options } = parseArgs(argv, spec);
+  const data = readCheckpoint(options.file, action === "add");
+  const log = agentLog(data);
+  let result;
+  if (action === "add") {
+    requireInput(/^[A-Za-z0-9._-]+$/.test(options.id), "agent id may only use letters, digits, '.', '_' and '-'");
+    requireInput(!log.some((entry) => entry.id === options.id), `agent already logged: ${options.id}`);
+    const run = options.run ?? (data.run_id ??= randomUUID().replaceAll("-", "").slice(0, 8));
+    requireInput(/^[A-Za-z0-9]+$/.test(run), "run id may only use letters and digits");
+    result = { id: options.id, label: `factory:${run}:${options.id}`, stage: options.stage, parent: options.parent ?? null,
+      role: options.role, requested_model: options.model, requested_effort: options.effort, started_at: new Date().toISOString() };
+    log.push(result);
+  } else if (action === "done") {
+    const entry = log.find((item) => item.id === options.id);
+    requireInput(entry, `agent not logged: ${options.id}`);
+    Object.assign(entry, { ended_at: new Date().toISOString(), work: options.work, ...(options.stopped ? { status: "stopped" } : {}) });
+    result = entry;
+  } else {
+    const incoming = agentLog(readCheckpoint(options.from));
+    let added = 0;
+    for (const entry of incoming) {
+      const existing = log.find((item) => item.id === entry.id);
+      if (existing) {
+        requireInput(existing.label === entry.label, `agent id ${entry.id} already logged with another label`);
+        Object.assign(existing, entry);
+      } else {
+        log.push(entry);
+        added++;
+      }
+    }
+    result = { added, total: log.length };
+  }
+  writeAtomic(options.file, json(data));
+  return result;
 }
 
 function sumUsage(rows) {
@@ -214,11 +348,6 @@ function sumUsage(rows) {
   result.cost_usd = rows.some((row) => row.cost_usd === null || row.cost_complete === false)
     ? null : Math.round(rows.reduce((sum, row) => sum + row.cost_usd, 0) * 1e6) / 1e6;
   return result;
-}
-
-function usageRow(label, row, cost) {
-  const numbers = [row.input, row.output, row.cache_read, row.cache_write_5m + row.cache_write_1h].map(count);
-  return `| ${[label, ...numbers, cost].join(" | ")} |`;
 }
 
 const htmlBlockTags = new Set((
@@ -249,42 +378,52 @@ function* markdownLines(bytes) {
   let htmlEnd = null;
   for (const { 0: raw, index } of bytes.matchAll(/[^\n]*\n|[^\n]+$/g)) {
     const line = raw.replace(/\r?\n$|\r$/, "");
+    const nextIndex = index + raw.length;
     if (htmlEnd) {
       if (htmlEnd.test(line)) htmlEnd = null;
       continue;
     }
     const fenceLine = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
     if (fence || fenceLine) {
-      if (!fence) fence = fenceLine[1];
-      else if (fenceLine && fence[0] === fenceLine[1][0] && fenceLine[1].length >= fence.length && !fenceLine[2].trim()) fence = null;
+      if (!fence) {
+        fence = fenceLine[1];
+        if (/^spec-built(?:\s|$)/.test(fenceLine[2].trimStart())) yield { line, index, nextIndex, specBuilt: true };
+      } else if (fenceLine && fence[0] === fenceLine[1][0] && fenceLine[1].length >= fence.length && !fenceLine[2].trim()) {
+        fence = null;
+      }
       continue;
     }
     const standalone = line.trim();
-    if (standalone !== evidenceStart && standalone !== evidenceEnd) {
+    if (!markerLines.has(standalone)) {
       const end = htmlBlockEnd(line);
       if (end) {
         if (!end.test(line)) htmlEnd = end;
+        if (/^ {0,3}<details[\s>]/i.test(line)) yield { line, index, nextIndex, details: true };
         continue;
       }
     }
-    yield { line, index, nextIndex: index + raw.length };
+    yield { line, index, nextIndex };
   }
 }
 
 function bodyMarkers(bytes) {
   let marks = null;
+  let pair = null;
   for (const { line, index } of markdownLines(bytes)) {
     const marker = line.trim();
-    if (marker === evidenceStart) {
-      requireInput(!marks, "duplicate evidence-trail start marker");
-      marks = { start: index + line.indexOf(marker), lineStart: index };
+    const opens = markerPairs.find(([start]) => start === marker);
+    if (opens) {
+      requireInput(!marks, "duplicate Diagnostics or evidence-trail start marker");
+      pair = opens;
+      marks = { start: index + line.indexOf(marker), lineStart: index, startMarker: marker };
     }
-    if (marker === evidenceEnd) {
-      requireInput(marks && marks.end === undefined, "unbalanced or duplicate evidence-trail end marker");
+    if (markerPairs.some(([, end]) => end === marker)) {
+      requireInput(marks && marks.end === undefined && pair[1] === marker, "unbalanced or duplicate Diagnostics end marker");
       marks.end = index + line.indexOf(marker);
+      marks.endMarker = marker;
     }
   }
-  requireInput(!marks || marks.end !== undefined, "unbalanced evidence-trail markers");
+  requireInput(!marks || marks.end !== undefined, "unbalanced Diagnostics markers");
   return marks;
 }
 
@@ -297,45 +436,67 @@ function spacing(bytes, eol) {
   return bytes.endsWith("\n") ? eol : eol + eol;
 }
 
-function ledger(options) {
+function diagnosticsHistory(body, marks, includePriorRun) {
+  if (!marks) return [];
+  const panel = body.subarray(marks.start + marks.startMarker.length, marks.end)
+    .toString("utf8").trim().split(/\r?\n/);
+  if (marks.startMarker === evidenceStart) return [...panel, ""];
+  const historyStart = panel.indexOf(diagnosticsHistoryStart);
+  if (historyStart === -1) return includePriorRun ? [...panel, ""] : [];
+  requireInput(panel.at(-1) === "</details>", "missing Diagnostics panel closing tag");
+  const history = panel.slice(historyStart + 2, -1);
+  if (!includePriorRun) return history;
+  return [...panel.slice(0, historyStart), "</details>", "", ...history];
+}
+
+function prDiagnostics(options) {
   const body = read(options.body);
   const bytes = body.toString("latin1");
   const eol = bytes.includes("\r\n") ? "\r\n" : "\n";
   const marks = bodyMarkers(bytes);
-  const rows = readJson(options.rows);
-  requireInput(Array.isArray(rows), "ledger rows must be a JSON array");
-  const table = [
-    "<details><summary>Evidence trail</summary>", "",
-    "| # | Stage | Skill or agent | Outcome | Link | Models | Tokens | Cost |",
-    "| --- | --- | --- | --- | --- | --- | ---: | ---: |",
-  ];
-  const sum = { tokens: 0, cost_usd: 0 };
-  const incomplete = new Set();
-  for (const row of rows) {
-    requireInput(isObject(row) && isCount(row.n) && isText(row.stage)
-      && [row.skill, row.outcome, row.link].every((value) => value === null || typeof value === "string")
-      && (row.models === null || typeof row.models === "string" || (Array.isArray(row.models) && row.models.every(isText)))
-      && (row.tokens === null || isCount(row.tokens)) && (row.cost_usd === null || isCost(row.cost_usd)), "invalid ledger row");
-    for (const field of Object.keys(sum)) {
-      if (row[field] === null) incomplete.add(field);
-      else sum[field] += row[field];
-    }
-    const readyTail = row.stage === "Ready" && row.models === null && row.tokens === 0 && row.cost_usd === 0;
-    const tokens = row.tokens === null ? "—" : count(row.tokens);
-    const cost = row.cost_usd === null ? "—" : dollars(row.cost_usd);
-    const cells = [row.n, row.stage, row.skill ?? "", row.outcome ?? "", row.link ?? "",
-      Array.isArray(row.models) ? row.models.join(", ") : row.models ?? "",
-      readyTail ? "" : tokens, readyTail ? "" : cost];
-    table.push(`| ${cells.map(markdownCell).join(" | ")} |`);
+  const data = readCheckpoint(options.file, false);
+  const previousBodyPath = data.description?.previous_body;
+  let history = diagnosticsHistory(body, marks, false);
+  if (isText(previousBodyPath)) {
+    const previousBody = read(previousBodyPath);
+    history = diagnosticsHistory(previousBody, bodyMarkers(previousBody.toString("latin1")), true);
   }
-  const total = (field, formatter) => incomplete.has(field) ? `≥ ${formatter(sum[field])} (incomplete)` : formatter(sum[field]);
-  table.push(`| | **Run total** | | | | | **${total("tokens", count)}** | **${total("cost_usd", dollars)}** |`, "", "</details>");
-  const panel = table.join(eol);
+  const stages = isObject(data.stages) ? data.stages : {};
+  const names = options.stage;
+  const parts = [];
+  let agents = 0;
+  let cost = 0;
+  for (const name of names) {
+    const stage = stages[name];
+    requireInput(isObject(stage) && stage.end && !stage.split_pending && isText(stage.diagnostics), `stage is not closed: ${name}`);
+    const lines = fs.readFileSync(stage.diagnostics, "utf8").replace(/\n+$/, "").split("\n");
+    const opening = /^<details><summary>Diagnostics — (.*)<\/summary>$/.exec(lines[0]);
+    if (opening && lines.at(-1) === "</details>") {
+      parts.push(`**${opening[1]}**`, ...lines.slice(1, -1));
+    } else {
+      parts.push(`**${markdownCell(name)}** — ${lines.join(" ")}`, "");
+    }
+    agents += isCount(stage.agents) ? stage.agents : 0;
+    cost = cost === null || stage.cost_usd == null ? null : cost + stage.cost_usd;
+  }
+  const run = Object.entries(stages).filter(([name, stage]) => name !== "Ready" && isObject(stage) && stage.end && !stage.split_pending);
+  const runTokens = run.every(([, stage]) => isCount(stage.tokens)) ? run.reduce((sum, [, stage]) => sum + stage.tokens, 0) : null;
+  const runCost = run.every(([, stage]) => isCost(stage.cost_usd)) ? run.reduce((sum, [, stage]) => sum + stage.cost_usd, 0) : null;
+  const summary = [names.join(" · "), `${agents} agent${agents === 1 ? "" : "s"}`, cost === null ? "N/A" : dollars(cost)].join(" · ");
+  const panel = [
+    `<details><summary>Diagnostics — ${markdownCell(summary)}</summary>`, "",
+    `- Run so far: ${run.map(([name]) => markdownCell(name)).join(", ") || "none"} · ${runTokens === null ? "N/A" : compact(runTokens)} tokens · ${runCost === null ? "N/A" : dollars(runCost)}`,
+    "- Review Round and Final handoff Diagnostics are on their own review and comment.", "",
+    ...parts,
+    ...(history.length ? [diagnosticsHistoryStart, "", ...history] : []),
+    "</details>",
+  ].join(eol);
+  const wrapped = `${diagnosticsStart}${eol}${panel}${eol}${diagnosticsEnd}`;
   const result = marks
-    ? edit(body, marks.start + evidenceStart.length, marks.end, `${eol}${panel}${eol}`)
-    : edit(body, body.length, body.length, `${spacing(bytes, eol)}${evidenceStart}${eol}${panel}${eol}${evidenceEnd}${eol}`);
+    ? edit(body, marks.start, marks.end + marks.endMarker.length, wrapped)
+    : edit(body, body.length, body.length, `${spacing(bytes, eol)}${wrapped}${eol}`);
   fs.writeFileSync(options.out, result);
-  return { rows: rows.length };
+  return { stages: names.length, agents, cost_usd: cost, run_tokens: runTokens, run_cost_usd: runCost, replaced_legacy: marks?.startMarker === evidenceStart };
 }
 
 function section(options) {
@@ -354,8 +515,26 @@ function section(options) {
   let end = marks?.lineStart ?? body.length;
   let level;
   let paragraph = null;
-  for (const { line, index, nextIndex } of markdownLines(bytes)) {
+  for (const { line, index, nextIndex, specBuilt, details } of markdownLines(bytes)) {
     if (index >= end) break;
+    if (details) {
+      // A collapsed block after the section (a diagnosed fix's embedded plan) is not part of it.
+      if (start !== null) {
+        end = index;
+        break;
+      }
+      paragraph = null;
+      continue;
+    }
+    if (specBuilt) {
+      // The build record and any following local spec belong outside the section.
+      if (start !== null) {
+        end = index;
+        break;
+      }
+      paragraph = null;
+      continue;
+    }
     if (paragraph?.nextIndex !== index) paragraph = null;
     const atx = atxHeading(line);
     const underline = /^ {0,3}(=+|-+)[ \t]*$/.exec(line);
@@ -556,7 +735,7 @@ function runReport(run, start, end, options) {
 
 function stage(action, argv) {
   const { options } = parseArgs(argv, { required: ["file", "stage"],
-    optional: action === "close" ? ["until", "session-id"] : [], repeated: action === "close" ? ["transcript"] : [] });
+    optional: action === "close" ? ["until", "session-id", "work"] : [], repeated: action === "close" ? ["transcript"] : [] });
   const data = readCheckpoint(options.file, action === "open");
   data.stages ??= {};
   requireInput(isObject(data.stages), "checkpoint stages must be an object");
@@ -585,9 +764,11 @@ function stage(action, argv) {
     writeAtomic(usage, json(report));
     const allParts = [...parts, { start: partStart, end, usage,
       session_id: options["session-id"] ?? data.run?.session_id ?? null }];
-    const { block, ...summary } = diagnosticsBlock(name, allParts.map((part) => part.usage));
+    const { block, ...summary } = diagnosticsBlock(name, allParts.map((part) => part.usage),
+      { agents: data.agents ?? null, mode: isText(data.execution_mode) ? data.execution_mode : null,
+        work: options.work ?? current.work ?? null, rootModel: isText(data.root_model) ? data.root_model : null });
     writeAtomic(diagnostics, block);
-    result = { start, end, usage, diagnostics, ...summary };
+    result = { start, end, usage, diagnostics, ...summary, ...(options.work ?? current.work ? { work: options.work ?? current.work } : {}) };
     if (splitting || parts.length) Object.assign(result, { parts: allParts, split_pending: splitting });
   }
   assign(data.stages, name, result);
@@ -697,7 +878,8 @@ function verifyCommits(options) {
 
 function main(argv) {
   const [command, ...args] = argv;
-  const actions = { checkpoint: ["get", "set", "append"], stage: ["open", "close"], compare: ["snapshot", "same", "range"] };
+  const actions = { checkpoint: ["get", "set", "append"], stage: ["open", "close"], compare: ["snapshot", "same", "range"],
+    agent: ["add", "done", "merge"] };
   if (command === "--help" || command === "-h") {
     const source = fs.readFileSync(new URL(import.meta.url), "utf8");
     return { usage: source.split("/**\n")[1].split(" */")[0].replace(/^ \* ?/gm, "") };
@@ -705,11 +887,11 @@ function main(argv) {
   if (has(actions, command)) {
     const [action, ...rest] = args;
     requireInput(actions[command].includes(action), `unknown ${command} action: ${action ?? "missing"}`);
-    return { checkpoint, stage, compare }[command](action, rest);
+    return { checkpoint, stage, compare, agent }[command](action, rest);
   }
   const flags = {
-    diagnostics: { required: ["stage", "usage", "out"], repeated: ["usage"] },
-    ledger: { required: ["body", "rows", "out"] },
+    diagnostics: { required: ["stage", "usage", "out"], repeated: ["usage"], optional: ["agents", "mode", "work"] },
+    "pr-diagnostics": { required: ["body", "file", "stage", "out"], repeated: ["stage"] },
     section: { required: ["body", "heading", "content", "out"], switches: ["match-prefix"] },
     review: { required: ["commit", "body", "comments", "diff", "out"] },
     "verify-commits": { required: ["from", "to", "rows"] },
@@ -717,11 +899,18 @@ function main(argv) {
   requireInput(has(flags, command), `unknown command: ${command ?? "missing"} (use --help)`);
   const { options } = parseArgs(args, flags[command]);
   if (command === "diagnostics") {
-    const { block, ...result } = diagnosticsBlock(options.stage, options.usage);
+    let agents = null;
+    let rootModel = null;
+    if (options.agents) {
+      const loaded = readJson(options.agents);
+      agents = Array.isArray(loaded) ? loaded : loaded?.agents ?? null;
+      rootModel = isText(loaded?.root_model) ? loaded.root_model : null;
+    }
+    const { block, ...result } = diagnosticsBlock(options.stage, options.usage, { agents, mode: options.mode ?? null, work: options.work ?? null, rootModel });
     fs.writeFileSync(options.out, block);
     return result;
   }
-  return { ledger, section, review, "verify-commits": verifyCommits }[command](options);
+  return { "pr-diagnostics": prDiagnostics, section, review, "verify-commits": verifyCommits }[command](options);
 }
 
 try {

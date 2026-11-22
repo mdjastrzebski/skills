@@ -56,7 +56,7 @@ factory                  # orchestrates the run, posts the handoff, marks the PR
 ├── diagnose-issue       # diagnose reports and verify candidate fix PRs
 ├── prepare-spec         # create, revise, or validate a saved spec and size its build
 ├── implement-spec       # build in a sized subagent on a new or existing PR branch
-├── summarize-changes    # facts for the Summary 1 and Final handoff comments
+├── summarize-changes    # facts for the Final handoff comment
 └── fix-issues           # triage and fix each review round's findings
     └── verify-and-fix   # verify and fix one finding
 ```
