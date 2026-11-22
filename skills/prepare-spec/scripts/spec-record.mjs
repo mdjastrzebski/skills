@@ -4,12 +4,14 @@
  *   node scripts/spec-record.mjs check FILE
  *   node scripts/spec-record.mjs stamp FILE --revision N --approved-by WHO
  *       --approved-at ISO8601Z --base-sha SHA [--branch NAME]
- *   node scripts/spec-record.mjs pin FILE --out DIR
+ *   node scripts/spec-record.mjs pin FILE --out DIR [--format legacy]
  *   node scripts/spec-record.mjs built FILE
  * check/stamp write JSON {spec_sha256, record, hash_matches} to stdout.
  * pin verifies an approved, hash-matching document and splits it into
  * DIR/document.md, summary.md, full-spec.md and record.json, printing
  * {"status":"ok",...} or {"status":"escalate","reason":...} (writing nothing).
+ * Legacy format saves the entire approved body as the full spec, without
+ * splitting a summary or extracting structured metadata.
  * built reads the `spec-built` block from a saved PR description.
  * Exits 2 for invalid arguments, 1 for file errors. A changed or absent
  * record, or a document pin/built cannot verify, is data, not an error.
@@ -32,7 +34,7 @@ if (!commands.includes(command) || !file || file.startsWith('--')) {
 
 const options = new Map();
 const required = { stamp: ['--revision', '--approved-by', '--approved-at', '--base-sha'], pin: ['--out'] };
-const allowed = { stamp: [...required.stamp, '--branch'], pin: required.pin, check: [], built: [] };
+const allowed = { stamp: [...required.stamp, '--branch'], pin: [...required.pin, '--format'], check: [], built: [] };
 for (let i = 0; i < args.length; i += 2) {
   const key = args[i];
   const value = args[i + 1];
@@ -64,7 +66,9 @@ if (command === 'stamp') {
 }
 
 const outputs = { document: 'document.md', summary: 'summary.md', full_spec: 'full-spec.md', record: 'record.json' };
+const legacyFormat = options.get('--format') === 'legacy';
 if (command === 'pin') {
+  if (options.has('--format') && !legacyFormat) invalid('Expected --format legacy.');
   const out = options.get('--out');
   for (const name of Object.values(outputs)) {
     if (existsSync(path.join(out, name))) invalid(`Refusing to overwrite ${path.join(out, name)}`);
@@ -306,23 +310,29 @@ function splitDocument(body) {
   };
 }
 
-function pin(source, out) {
+function pin(source, out, legacy) {
   const { body, result } = inspect(source);
   if (!result.record) throw new Escalate('missing_record');
   if (result.record.status !== 'approved') throw new Escalate('not_approved');
   if (!result.hash_matches) throw new Escalate('hash_mismatch');
-  const { meta, summary, fullSpec } = splitDocument(body);
-  const files = Object.fromEntries(Object.entries(outputs).map(([key, name]) => [key, path.join(out, name)]));
+  const { meta, summary, fullSpec } = legacy ? { meta: null, fullSpec: body } : splitDocument(body);
+  const contents = { document: body, summary, full_spec: fullSpec };
+  const files = {};
+  const fileSha256 = {};
   const record = {
     record: result.record,
     spec_sha256: result.spec_sha256,
     meta,
-    file_sha256: { document: sha256(body), summary: sha256(summary), full_spec: sha256(fullSpec) },
+    file_sha256: fileSha256,
   };
   mkdirSync(out, { recursive: true });
-  writeFileSync(files.document, body, 'utf8');
-  writeFileSync(files.summary, summary, 'utf8');
-  writeFileSync(files.full_spec, fullSpec, 'utf8');
+  for (const [key, content] of Object.entries(contents)) {
+    if (content === undefined) continue;
+    files[key] = path.join(out, outputs[key]);
+    fileSha256[key] = sha256(content);
+    writeFileSync(files[key], content, 'utf8');
+  }
+  files.record = path.join(out, outputs.record);
   writeFileSync(files.record, `${JSON.stringify(record, null, 2)}\n`, 'utf8');
   return { status: 'ok', spec_sha256: result.spec_sha256, record: result.record, meta, files };
 }
@@ -371,7 +381,7 @@ try {
   if (command === 'pin' || command === 'built') {
     let result;
     try {
-      result = command === 'pin' ? pin(source, options.get('--out')) : built(source);
+      result = command === 'pin' ? pin(source, options.get('--out'), legacyFormat) : built(source);
     } catch (error) {
       if (!(error instanceof Escalate)) throw error;
       result = { status: 'escalate', reason: error.reason, detail: error.detail };

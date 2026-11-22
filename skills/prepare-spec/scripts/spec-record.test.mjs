@@ -160,6 +160,50 @@ function built(text) {
 const hash = 'a'.repeat(64);
 const block = keys => `## Summary\n\n- Changed things.\n\nCloses #4\n\n${fence}spec-built\n${keys}\n${fence}\n`;
 
+test('pins legacy issue and local specs for publication and review', () => {
+  const issue = issueDoc({ metaBlock: '' });
+  const local = '# Spec: Older local spec\n\n## Summary\n\n**Goal:** Do it.\n\n## Requirements\n\nBuild the thing.\n';
+  for (const [text, reason] of [[issue, 'meta_missing'], [local, 'full_spec_missing']]) {
+    const file = stamp(write(text));
+    const saved = readFileSync(file, 'utf8');
+    const out = path.join(dir, `legacy-${count}`);
+    assert.equal(run('pin', file, '--out', out).json.reason, reason);
+    assert.equal(existsSync(out), false);
+    const { code, json } = run('pin', file, '--out', out, '--format', 'legacy');
+    assert.equal(code, 0);
+    assert.equal(json.status, 'ok', JSON.stringify(json));
+    assert.equal(json.files.summary, undefined);
+    const record = JSON.parse(readFileSync(json.files.record, 'utf8'));
+    assert.equal(record.meta, null);
+    assert.equal(record.record.revision, '2');
+    assert.equal(record.spec_sha256, run('check', file).json.spec_sha256);
+    const document = readFileSync(json.files.document, 'utf8');
+    assert.equal(document, text);
+    assert.equal(document, readFileSync(json.files.full_spec, 'utf8'));
+    assert.equal(readFileSync(file, 'utf8'), saved);
+    assert.equal(record.file_sha256.document, sha(json.files.document));
+    assert.equal(record.file_sha256.full_spec, sha(json.files.full_spec));
+    const target = text === issue ? 'issue: #4' : 'source: SPEC.md\nbranch: feat';
+    const marker = block(`${target}\nrevision: ${record.record.revision}\nspec_sha256: ${record.spec_sha256}`);
+    const pr = text === issue ? marker : `${marker}\n<details>\n<summary>Spec</summary>\n\n${document}\n</details>\n`;
+    assert.equal(built(pr).built.spec_sha256, record.spec_sha256);
+  }
+});
+
+test('legacy pins still require matching approval', () => {
+  const text = issueDoc({ metaBlock: '' });
+  const unapproved = write(text);
+  const draft = stamp(write(text));
+  writeFileSync(draft, readFileSync(draft, 'utf8').replace('status: approved', 'status: draft'));
+  const edited = stamp(write(text));
+  writeFileSync(edited, readFileSync(edited, 'utf8').replace('Do it.', 'Do more.'));
+  for (const [file, reason] of [[unapproved, 'missing_record'], [draft, 'not_approved'], [edited, 'hash_mismatch']]) {
+    const out = path.join(dir, `${reason}-legacy`);
+    assert.equal(run('pin', file, '--out', out, '--format', 'legacy').json.reason, reason);
+    assert.equal(existsSync(out), false);
+  }
+});
+
 test('reads spec-built blocks', () => {
   assert.deepEqual(built(block(`issue: #4\nrevision: 2\nspec_sha256: ${hash}`)),
     { status: 'ok', built: { revision: 2, spec_sha256: hash, issue: 4 } });

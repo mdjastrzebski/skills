@@ -3,6 +3,7 @@
 ## 0.12.0 (2026-11-22)
 
 - Read only a spec issue's title and record line, and pass pinned spec files by path between agents.
+- Pass the approved plan or scope to diagnosis reviewers by path and use the same saved-spec publication layout for legacy revisions.
 - Match PRs by their `spec-built` block, take Adjust's previous revision from the issue's superseded-revision comment, and preserve the build record and embedded spec when refreshing the PR description's implementation summary at handoff.
 - Rename review rounds to "Review Round N" and post them as labelled bullets plus a Finding, Severity, Difficulty, Verdict and Commit table with linkable SHAs.
 - Show the recorded orchestrator model when transcript usage is unavailable.
