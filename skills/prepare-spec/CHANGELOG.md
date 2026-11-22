@@ -4,6 +4,7 @@
 
 - Write the build estimate and scope as a visible `spec-meta` block in the summary, covered by the approval hash.
 - Add `spec-record.mjs pin`, which verifies a saved spec and splits it into summary, full-spec and record files, and `built`, which reads a PR's `spec-built` block; anything unexpected falls back to the text path, as do specs saved without `spec-meta` until their next revision. Explicit user overrides can record builder efforts above high in `spec-meta`.
+- Ignore embedded spec headings and build marker examples when parsing outer document structure.
 - Reuse an approval without rereading the spec when nothing under `scope` changed, and post the outgoing revision as a collapsed issue comment before saving a new one.
 
 ## 0.3.0 (2026-11-22)

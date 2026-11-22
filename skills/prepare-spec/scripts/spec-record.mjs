@@ -165,6 +165,21 @@ function closingDetails(marks, start) {
   return -1;
 }
 
+// Track HTML details nesting outside fenced blocks, so embedded documents do not
+// contribute outer headings or build markers.
+function detailsDepths(marks) {
+  let depth = 0;
+  return marks.map(mark => {
+    const current = depth;
+    if (mark.kind === 'top') {
+      const line = mark.line.trim();
+      if (line === '<details>' || line.startsWith('<details ')) depth++;
+      else if (line === '</details>') depth = Math.max(0, depth - 1);
+    }
+    return current;
+  });
+}
+
 function trimBlank(lines) {
   let start = 0;
   let end = lines.length;
@@ -252,12 +267,12 @@ function parseMeta(lines) {
 function splitDocument(body) {
   const marks = scanLines(body.replace(/\n$/, ''));
   if (!/^# Spec: .+$/.test(marks[0]?.line ?? '') || marks[0].kind !== 'top') throw new Escalate('missing_title');
-  const summaries = topIndexes(marks, line => line === '## Summary');
-  if (summaries.length !== 1) throw new Escalate('summary_heading', `found ${summaries.length} "## Summary" headings`);
-  const summaryStart = summaries[0];
+  const depths = detailsDepths(marks);
+  const summaryStart = topIndexes(marks, line => line === '## Summary').find(i => depths[i] === 0);
+  if (summaryStart === undefined) throw new Escalate('summary_heading', 'found no outer Summary heading');
   const detailsStarts = topIndexes(marks, line => line.trim() === '<details>', summaryStart)
-    .filter(i => marks[i + 1]?.kind === 'top' && marks[i + 1].line.trim() === '<summary>Full spec</summary>');
-  const headingStarts = topIndexes(marks, line => line === '## Full spec', summaryStart);
+    .filter(i => depths[i] === 0 && marks[i + 1]?.kind === 'top' && marks[i + 1].line.trim() === '<summary>Full spec</summary>');
+  const headingStarts = topIndexes(marks, line => line === '## Full spec', summaryStart).filter(i => depths[i] === 0);
   if (detailsStarts.length + headingStarts.length === 0) throw new Escalate('full_spec_missing');
   if (detailsStarts.length + headingStarts.length > 1) throw new Escalate('full_spec_ambiguous');
   let fullStart;
@@ -272,6 +287,8 @@ function splitDocument(body) {
     fullStart = headingStarts[0];
     content = marks.slice(fullStart + 1).map(mark => mark.line);
   }
+  const summaries = topIndexes(marks, line => line === '## Summary', 0, fullStart).filter(i => depths[i] === 0);
+  if (summaries.length !== 1) throw new Escalate('summary_heading', `found ${summaries.length} outer Summary headings`);
   content = trimBlank(content);
   if (!content.length) throw new Escalate('full_spec_empty');
   const metas = namedFences(marks, 'spec-meta', summaryStart + 1, fullStart);
@@ -312,7 +329,8 @@ function pin(source, out) {
 
 function built(source) {
   const marks = scanLines(normalize(source));
-  const blocks = namedFences(marks, 'spec-built');
+  const depths = detailsDepths(marks);
+  const blocks = namedFences(marks, 'spec-built').filter(block => depths[block.start] === 0);
   if (blocks.length === 0) {
     if (topIndexes(marks, line => /^## Spec rev \d+\b/.test(line)).length) throw new Escalate('legacy_section');
     throw new Escalate('built_missing');

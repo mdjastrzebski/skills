@@ -97,6 +97,12 @@ test('pins a local document with a Full spec heading', () => {
   assert.equal(pin(text).json.status, 'ok');
 });
 
+test('ignores Summary headings inside the full spec', () => {
+  assert.equal(pin(issueDoc({ full: '## Summary\n\nInner summary.' })).json.status, 'ok');
+  const local = issueDoc({ full: '## Summary\n\nInner summary.' }).replace(/<details>\n<summary>Full spec<\/summary>\n\n([\s\S]*)\n\n<\/details>\n$/, '## Full spec\n\n$1\n');
+  assert.equal(pin(local).json.status, 'ok');
+});
+
 test('CRLF input pins to the same hash', () => {
   assert.equal(pin(issueDoc().replace(/\n/g, '\r\n')).json.spec_sha256, pin(issueDoc()).json.spec_sha256);
 });
@@ -162,6 +168,10 @@ test('reads spec-built blocks', () => {
   const docHash = createHash('sha256').update(document).digest('hex');
   const local = `${block(`source: SPEC.md\nbranch: feat\nrevision: 2\nspec_sha256: ${docHash}`)}\n<details>\n<summary>Spec</summary>\n\n${document}\n</details>\n`;
   assert.equal(built(local).status, 'ok', JSON.stringify(built(local)));
+  const exampleDoc = issueDoc({ full: `${fence}spec-built\nissue: #9\nrevision: 1\nspec_sha256: ${hash}\n${fence}` });
+  const exampleHash = createHash('sha256').update(exampleDoc).digest('hex');
+  const withExample = `${block(`source: SPEC.md\nbranch: feat\nrevision: 2\nspec_sha256: ${exampleHash}`)}\n<details>\n<summary>Spec</summary>\n\n${exampleDoc}</details>\n`;
+  assert.equal(built(withExample).status, 'ok', JSON.stringify(built(withExample)));
   assert.equal(built(local.replace('Do it.', 'Do more.')).reason, 'built_hash_mismatch');
   assert.equal(built(block(`source: SPEC.md\nbranch: feat\nrevision: 2\nspec_sha256: ${hash}`)).reason, 'built_document_missing');
 });
