@@ -23,9 +23,11 @@ Add `skills/<skill-name>/scripts/` only for deterministic work the model would o
 
 When adding `scripts/`:
 
-- keep each script self-contained, using only the standard library of a language most agents can run (for example, Python 3)
+- ship self-contained `.mjs` files in `skills/<skill-name>/scripts/` using only Node 18+ built-ins such as `node:fs`, `node:child_process`, and `node:path`. Invoke them as `node <skill-dir>/scripts/<name>.mjs`. They require no additional dependencies.
+- keep `skills/index-github/scripts/gh_health.py` in Python as an existing exception. Do not add new Python scripts.
+- use Bash for root `scripts/` tools that mostly handle Git or filesystem plumbing. Use `.mjs` when a tool parses or edits JSON or contains substantial logic.
 - make it read-only unless writing is the skill's purpose
-- document its usage in a docstring and in `SKILL.md`, and refer to it by its path relative to `SKILL.md`
+- document its usage in a header comment and in `SKILL.md`, and refer to it by its path relative to `SKILL.md`
 - print machine-readable output that the model interprets, rather than conclusions
 
 ## Agent-Specific Config
