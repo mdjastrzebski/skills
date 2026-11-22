@@ -8,7 +8,7 @@
  *     --effort EFFORT [--parent ID] [--run RUN]
  * node factory.mjs agent done --file FILE --id ID --work TEXT [--stopped]
  * node factory.mjs agent merge --file FILE --from FILE
- * node factory.mjs ledger --body FILE --rows FILE --out FILE
+ * node factory.mjs pr-diagnostics --body FILE --file CHECKPOINT --stage NAME [--stage NAME]... --out FILE
  * node factory.mjs section --body FILE --heading TEXT [--match-prefix] --content FILE --out FILE
  * node factory.mjs review --commit SHA --body FILE --comments FILE --diff FILE --out FILE
  * node factory.mjs checkpoint get --file FILE [KEY]
@@ -36,8 +36,11 @@ import { fileURLToPath } from "node:url";
 
 class UsageError extends Error {}
 
-const evidenceStart = "<!-- evidence-trail:start -->";
-const evidenceEnd = "<!-- evidence-trail:end -->";
+const diagnosticsStart = "<!-- factory-diagnostics:start -->";
+const diagnosticsEnd = "<!-- factory-diagnostics:end -->";
+// Legacy PR descriptions carry an Evidence trail panel, which pr-diagnostics replaces.
+const markerPairs = [[diagnosticsStart, diagnosticsEnd], ["<!-- evidence-trail:start -->", "<!-- evidence-trail:end -->"]];
+const markerLines = new Set(markerPairs.flat());
 const tokenFields = ["input", "output", "cache_read", "cache_write_5m", "cache_write_1h"];
 const comparisonFields = ["head", "base_ref", "merge_base"];
 const has = (object, key) => Object.hasOwn(object, key);
@@ -287,8 +290,8 @@ function diagnosticsBlock(stage, files, { agents = null, mode = null, work = nul
     ...(byModel.length ? [`By model (USD): ${byModel.join(" · ")}`, ""] : []),
     "</details>", "",
   ].join("\n");
-  if (failure) return { available: false, reason: failure, models: [], tokens: null, cost_usd: null, block };
-  return { available: true, models: names, tokens: totalTokens, cost_usd: totals.cost_usd, block };
+  if (failure) return { available: false, reason: failure, models: [], tokens: null, cost_usd: null, agents: logged.length, block };
+  return { available: true, models: names, tokens: totalTokens, cost_usd: totals.cost_usd, agents: logged.length, block };
 }
 
 function agentLog(data) {
@@ -385,7 +388,7 @@ function* markdownLines(bytes) {
       continue;
     }
     const standalone = line.trim();
-    if (standalone !== evidenceStart && standalone !== evidenceEnd) {
+    if (!markerLines.has(standalone)) {
       const end = htmlBlockEnd(line);
       if (end) {
         if (!end.test(line)) htmlEnd = end;
@@ -398,18 +401,22 @@ function* markdownLines(bytes) {
 
 function bodyMarkers(bytes) {
   let marks = null;
+  let pair = null;
   for (const { line, index } of markdownLines(bytes)) {
     const marker = line.trim();
-    if (marker === evidenceStart) {
-      requireInput(!marks, "duplicate evidence-trail start marker");
-      marks = { start: index + line.indexOf(marker), lineStart: index };
+    const opens = markerPairs.find(([start]) => start === marker);
+    if (opens) {
+      requireInput(!marks, "duplicate Diagnostics or evidence-trail start marker");
+      pair = opens;
+      marks = { start: index + line.indexOf(marker), lineStart: index, startMarker: marker };
     }
-    if (marker === evidenceEnd) {
-      requireInput(marks && marks.end === undefined, "unbalanced or duplicate evidence-trail end marker");
+    if (markerPairs.some(([, end]) => end === marker)) {
+      requireInput(marks && marks.end === undefined && pair[1] === marker, "unbalanced or duplicate Diagnostics end marker");
       marks.end = index + line.indexOf(marker);
+      marks.endMarker = marker;
     }
   }
-  requireInput(!marks || marks.end !== undefined, "unbalanced evidence-trail markers");
+  requireInput(!marks || marks.end !== undefined, "unbalanced Diagnostics markers");
   return marks;
 }
 
@@ -422,45 +429,46 @@ function spacing(bytes, eol) {
   return bytes.endsWith("\n") ? eol : eol + eol;
 }
 
-function ledger(options) {
+function prDiagnostics(options) {
   const body = read(options.body);
   const bytes = body.toString("latin1");
   const eol = bytes.includes("\r\n") ? "\r\n" : "\n";
   const marks = bodyMarkers(bytes);
-  const rows = readJson(options.rows);
-  requireInput(Array.isArray(rows), "ledger rows must be a JSON array");
-  const table = [
-    "<details><summary>Evidence trail</summary>", "",
-    "| # | Stage | Skill or agent | Outcome | Link | Models | Tokens | Cost |",
-    "| --- | --- | --- | --- | --- | --- | ---: | ---: |",
-  ];
-  const sum = { tokens: 0, cost_usd: 0 };
-  const incomplete = new Set();
-  for (const row of rows) {
-    requireInput(isObject(row) && isCount(row.n) && isText(row.stage)
-      && [row.skill, row.outcome, row.link].every((value) => value === null || typeof value === "string")
-      && (row.models === null || typeof row.models === "string" || (Array.isArray(row.models) && row.models.every(isText)))
-      && (row.tokens === null || isCount(row.tokens)) && (row.cost_usd === null || isCost(row.cost_usd)), "invalid ledger row");
-    for (const field of Object.keys(sum)) {
-      if (row[field] === null) incomplete.add(field);
-      else sum[field] += row[field];
+  const data = readCheckpoint(options.file, false);
+  const stages = isObject(data.stages) ? data.stages : {};
+  const names = options.stage;
+  const parts = [];
+  let agents = 0;
+  let cost = 0;
+  for (const name of names) {
+    const stage = stages[name];
+    requireInput(isObject(stage) && stage.end && !stage.split_pending && isText(stage.diagnostics), `stage is not closed: ${name}`);
+    const lines = fs.readFileSync(stage.diagnostics, "utf8").replace(/\n+$/, "").split("\n");
+    const opening = /^<details><summary>Diagnostics — (.*)<\/summary>$/.exec(lines[0]);
+    if (opening && lines.at(-1) === "</details>") {
+      parts.push(`**${opening[1]}**`, ...lines.slice(1, -1));
+    } else {
+      parts.push(`**${markdownCell(name)}** — ${lines.join(" ")}`, "");
     }
-    const readyTail = row.stage === "Ready" && row.models === null && row.tokens === 0 && row.cost_usd === 0;
-    const tokens = row.tokens === null ? "—" : count(row.tokens);
-    const cost = row.cost_usd === null ? "—" : dollars(row.cost_usd);
-    const cells = [row.n, row.stage, row.skill ?? "", row.outcome ?? "", row.link ?? "",
-      Array.isArray(row.models) ? row.models.join(", ") : row.models ?? "",
-      readyTail ? "" : tokens, readyTail ? "" : cost];
-    table.push(`| ${cells.map(markdownCell).join(" | ")} |`);
+    agents += isCount(stage.agents) ? stage.agents : 0;
+    cost = cost === null || stage.cost_usd == null ? null : cost + stage.cost_usd;
   }
-  const total = (field, formatter) => incomplete.has(field) ? `≥ ${formatter(sum[field])} (incomplete)` : formatter(sum[field]);
-  table.push(`| | **Run total** | | | | | **${total("tokens", count)}** | **${total("cost_usd", dollars)}** |`, "", "</details>");
-  const panel = table.join(eol);
+  const run = Object.entries(stages).filter(([name, stage]) => name !== "Ready" && isObject(stage) && stage.end);
+  const runTokens = run.every(([, stage]) => isCount(stage.tokens)) ? run.reduce((sum, [, stage]) => sum + stage.tokens, 0) : null;
+  const runCost = run.every(([, stage]) => isCost(stage.cost_usd)) ? run.reduce((sum, [, stage]) => sum + stage.cost_usd, 0) : null;
+  const summary = [names.join(" · "), `${agents} agent${agents === 1 ? "" : "s"}`, cost === null ? "N/A" : dollars(cost)].join(" · ");
+  const panel = [
+    `<details><summary>Diagnostics — ${markdownCell(summary)}</summary>`, "",
+    `- Run so far: ${run.map(([name]) => markdownCell(name)).join(", ") || "none"} · ${runTokens === null ? "N/A" : compact(runTokens)} tokens · ${runCost === null ? "N/A" : dollars(runCost)}`,
+    "- Review Round and Final handoff Diagnostics are on their own review and comment.", "",
+    ...parts, "</details>",
+  ].join(eol);
+  const wrapped = `${diagnosticsStart}${eol}${panel}${eol}${diagnosticsEnd}`;
   const result = marks
-    ? edit(body, marks.start + evidenceStart.length, marks.end, `${eol}${panel}${eol}`)
-    : edit(body, body.length, body.length, `${spacing(bytes, eol)}${evidenceStart}${eol}${panel}${eol}${evidenceEnd}${eol}`);
+    ? edit(body, marks.start, marks.end + marks.endMarker.length, wrapped)
+    : edit(body, body.length, body.length, `${spacing(bytes, eol)}${wrapped}${eol}`);
   fs.writeFileSync(options.out, result);
-  return { rows: rows.length };
+  return { stages: names.length, agents, cost_usd: cost, run_tokens: runTokens, run_cost_usd: runCost, replaced_legacy: marks?.startMarker === markerPairs[1][0] };
 }
 
 function section(options) {
@@ -837,7 +845,7 @@ function main(argv) {
   }
   const flags = {
     diagnostics: { required: ["stage", "usage", "out"], repeated: ["usage"], optional: ["agents", "mode", "work"] },
-    ledger: { required: ["body", "rows", "out"] },
+    "pr-diagnostics": { required: ["body", "file", "stage", "out"], repeated: ["stage"] },
     section: { required: ["body", "heading", "content", "out"], switches: ["match-prefix"] },
     review: { required: ["commit", "body", "comments", "diff", "out"] },
     "verify-commits": { required: ["from", "to", "rows"] },
@@ -854,7 +862,7 @@ function main(argv) {
     fs.writeFileSync(options.out, block);
     return result;
   }
-  return { ledger, section, review, "verify-commits": verifyCommits }[command](options);
+  return { "pr-diagnostics": prDiagnostics, section, review, "verify-commits": verifyCommits }[command](options);
 }
 
 try {

@@ -144,3 +144,37 @@ test("agent log rejects duplicates and unknown IDs", () => {
     assert.equal(result.status, 2, result.stderr);
   }
 });
+
+test("PR description Diagnostics replaces the Evidence trail and rewrites in place", () => {
+  const usage = path.join(dir, "bad-usage.json");
+  const agents = path.join(dir, "pr-agents.json");
+  log(agents, "Build");
+  const blocks = {};
+  for (const [name, mode] of [["Spec", "inline"], ["Build", "nested"]]) {
+    blocks[name] = path.join(dir, `pr-${name}.md`);
+    factory("diagnostics", "--stage", name, "--usage", usage, "--agents", agents, "--mode", mode, "--out", blocks[name]);
+  }
+  const checkpoint = path.join(dir, "pr-checkpoint.json");
+  const stage = (name, tokens, cost, count) => ({ start: since, end: until, diagnostics: blocks[name], tokens, cost_usd: cost, agents: count });
+  fs.writeFileSync(checkpoint, JSON.stringify({ agents: JSON.parse(fs.readFileSync(agents, "utf8")).agents,
+    stages: { Spec: stage("Spec", 1000, 0.5, 0), Build: stage("Build", 2000, 1.25, 3) } }));
+  const body = path.join(dir, "pr-body.md");
+  fs.writeFileSync(body, "## Summary\n\n- x\n\n<!-- evidence-trail:start -->\n<details><summary>Evidence trail</summary>\n\nold\n\n</details>\n<!-- evidence-trail:end -->\n");
+  const once = path.join(dir, "pr-once.md");
+  const result = factory("pr-diagnostics", "--body", body, "--file", checkpoint, "--stage", "Spec", "--stage", "Build", "--out", once);
+  assert.equal(result.replaced_legacy, true);
+  const text = fs.readFileSync(once, "utf8");
+  assert.doesNotMatch(text, /Evidence trail|evidence-trail/);
+  assert.match(text, /<summary>Diagnostics — Spec · Build · 3 agents · \$1\.75<\/summary>/);
+  assert.match(text, /- Run so far: Spec, Build · 3k tokens · \$1\.75/);
+  assert.match(text, /\*\*Build · nested · 3 agents · N\/A\*\*\n\n- Mode: nested/);
+  assert.match(text, /\| 3 \| Reviewer \| 2 \| opus · high \|/);
+  const twice = path.join(dir, "pr-twice.md");
+  assert.equal(factory("pr-diagnostics", "--body", once, "--file", checkpoint, "--stage", "Spec", "--stage", "Build", "--out", twice).replaced_legacy, false);
+  assert.equal(fs.readFileSync(twice, "utf8"), text);
+  const notes = path.join(dir, "pr-notes.md");
+  fs.writeFileSync(notes, "## Reviewer notes\n\n- **Deferred:** None\n");
+  const withNotes = path.join(dir, "pr-with-notes.md");
+  factory("section", "--body", twice, "--heading", "## Reviewer notes", "--content", notes, "--out", withNotes);
+  assert.match(fs.readFileSync(withNotes, "utf8"), /## Reviewer notes[\s\S]*<!-- factory-diagnostics:start -->/);
+});
