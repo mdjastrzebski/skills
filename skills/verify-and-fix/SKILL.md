@@ -1,11 +1,11 @@
 ---
-name: fix-issue
+name: verify-and-fix
 description: Use when the user asks to verify a specific reported issue or review finding, then fix it if warranted. Also use when fix-issues delegates one item for verification and repair.
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
-# Fix Issue
+# Verify and Fix
 
 Handle one report on the current branch. Work within the reported issue and leave the commit, push, and branch selection to the caller. Never commit, push, or switch branches.
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.0 (2026-11-22)
+
+- Use stage owners when the harness supports nested subagents, with automatic flat and inline fallbacks.
+- Prepare stage diagnostics, checkpoints, comparisons, commit verification, and publishing files with a local helper.
+- Use verify-and-fix for hard findings and handle routine findings together.
+
 ## 0.10.0 (2026-11-22)
 
 - Set an explicit model and effort policy for every subagent and reviewer Factory launches: Sonnet level (`sonnet`/`terra`) by default, Opus level (`opus`/`sol`) at high effort for the reviewer, never `xhigh` or `max`, and frontier models (`fable`, `astra`) only when you explicitly ask.

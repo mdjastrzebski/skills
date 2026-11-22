@@ -2,18 +2,18 @@
 name: fix-issues
 description: Use when the user gives a list of issues, review findings, bug reports, or TODOs and asks to fix them, work through them, or "fix these issues" one by one. Also use when the user asks to "fix the PR comments", "address review comments/feedback", "fix comments on my PR", or "resolve the review"; the target is the PR given by number or URL, else the PR for the current branch. Triages and orders the list, then verifies and fixes each issue sequentially, with one commit per fixed issue on the current branch. Supports opt-in auto mode for unattended runs.
 metadata:
-  version: "0.7.0"
+  version: "0.8.0"
 ---
 
 # Fix Issues
 
-Work through a list of issues (pasted, or unresolved review comments on a GitHub PR) one at a time. The main agent triages and orders the list, then dispatches one issue at a time. Each worker decides whether its issue is real and worth fixing, and fixes it if so. The main agent commits each fix separately and ends with a short summary.
-
-The main agent coordinates and delegates the issue work when subagents are available. Otherwise, it handles each issue inline.
+Work through a list of issues (pasted, or unresolved review comments on a GitHub PR) one at a time. The main agent triages and orders the list. Then each issue is verified and fixed if warranted, either by a worker or directly in inline mode. The main agent commits each fix separately and ends with a short summary.
 
 ## Mode
 
 Use interactive mode unless the user explicitly requests auto mode or `factory` invokes the skill in auto mode. Auto mode accepts round `1` or `2` and defaults to `1`. Stop on any other round number and report the error. Each invocation handles one round.
+
+A caller can add the `inline` modifier to either mode. In inline mode the agent launches no subagents, follows `verify-and-fix` or the fallback brief itself for each issue in order, and commits each fix using Step 5.
 
 Auto mode prints the plan and proceeds without approval prompts. If required input or a safe preflight is missing, report the blocker and stop. For PR runs, authorization to push and reply is part of opting in.
 
@@ -97,12 +97,14 @@ Order:
 
 ## 4. Dispatch, one issue at a time
 
-For each issue in order, ask one subagent to follow the `fix-issue` skill and wait for its result. Provide the issue ID, kind, severity, verbatim report, source, current branch, fast checks, and commit style, and say that earlier issues in this batch may already be fixed and committed. Launch each worker on the standard tier (Sonnet level: Claude `sonnet`, GPT `terra`, latest version) at medium effort, or the light tier (Haiku level: Claude `haiku`, GPT `luna`) for a nit whose verification and fix are mechanical (a typo, a rename, formatting, a stale comment; Factory's model policy counts this as a mechanical task, not judging findings), or high for a subtle or cross-cutting issue; use the strong tier (Opus level: Claude `opus`, GPT `sol`) when high effort is not enough. Never use `xhigh` or `max` effort, or frontier models (Claude `fable`, GPT `astra`), unless the user explicitly asks for them. Set the model and effort explicitly rather than inheriting the session's. If subagents are unavailable, follow the same instructions inline. Never run issues in parallel: each one must see the code as earlier fixes left it.
+For each issue in order, prepare the `verify-and-fix` brief with its ID, kind, severity, verbatim report, source, current branch, fast checks, and commit style. State that earlier issues in this batch may already be fixed and committed. When the caller supplies the PR comparison, run `git diff --stat MERGE_BASE REVIEWED_HEAD` and read the full diff for each file the finding touches against the same comparison before fixing it. If the fix touches more files, read those file diffs too before editing them.
 
-If `fix-issue` is not installed, pass this brief instead (fill in the brackets):
+In inline mode, or when subagents are unavailable, follow the brief directly and skip per-issue tier selection. Otherwise, ask one subagent to follow the brief and wait for its result. Tell that worker to launch no agents. Launch on the standard tier (Sonnet level: Claude `sonnet`, GPT `terra`, latest version) at medium effort, or the light tier (Haiku level: Claude `haiku`, GPT `luna`) for a nit whose verification and fix are both mechanical (a typo, a rename, formatting, a stale comment). Use high effort for a subtle or cross-cutting issue and the strong tier (Opus level: Claude `opus`, GPT `sol`) when high effort is not enough. Never use `xhigh` or `max` effort, or frontier models (Claude `fable`, GPT `astra`), unless the user explicitly asks for them. Set the model and effort explicitly. Keep fixes sequential so each issue sees the earlier fixes.
+
+If `verify-and-fix` is not installed, use this brief instead (fill in the brackets):
 
 ```text
-You are handling one issue in [repo] on branch [branch]. Earlier issues in this batch may already be fixed and committed.
+You are handling one issue in [repo] on branch [branch]. Earlier issues in this batch may already be fixed and committed. Launch no agents.
 
 Issue [ID] ([kind], [severity]):
 [issue text as the user gave it]
@@ -130,12 +132,12 @@ COMMIT: [one-line commit subject in the repo's style: [style], or "none" if ther
 
 ## 5. Commit after each issue
 
-After each issue worker returns:
+After each issue is verified and any fix is made:
 
 - **VALID or PARTIAL:** check `git status` and `git diff`. The changes must match the reported CHANGES and stay within the issue. Revert any unrelated edits from the worker. Then stage only those files and make one commit on the current branch. Use the suggested subject; for PARTIAL, add the corrected issue definition to the body.
 - **Any other verdict:** make sure the working tree is clean (revert anything left over) and record the reason. No commit.
 
-Never squash, amend, or combine commits across issues.
+Recheck `git status` between issues. Start each issue with a clean tree and earlier fixes committed. Never squash, amend, or combine commits across issues.
 
 ## 6. Summary
 
@@ -150,7 +152,7 @@ After the last issue, print a concise summary in triage order. In auto mode, tit
 
 For PR runs, add a `Source` column (comment link or `file:line`). Include any skipped-outdated threads, `SKIPPED_BY_USER` items, `DEFERRED` items, and `FOLLOW_UP` items. If there are no actionable items, say so.
 
-Then one line with counts: fixed, partial, skipped (already fixed, invalid, not worth fixing, by user), deferred and follow-up (auto mode), failed. List failed issues with the reason so the user can follow up.
+Then one line with counts: fixed, partial, skipped (already fixed, invalid, not worth fixing, by user), deferred and follow-up (auto mode), failed. List failed issues with the reason so the user can follow up. Include the checks run and their results on a checks line. Include `inline (one context)` on that line when the same agent handled the issues inline. When a caller needs commit verification, also return full commit SHAs and the files from each fix's CHANGES.
 
 ## 7. Reply on the PR
 
