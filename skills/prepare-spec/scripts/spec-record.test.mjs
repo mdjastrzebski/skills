@@ -59,11 +59,11 @@ ${full}
 `;
 }
 
-function pin(text, { stamped = true } = {}) {
+function pin(text, { stamped = true, legacy = false } = {}) {
   const file = write(text);
   if (stamped) stamp(file);
   const out = path.join(dir, `out-${count}`);
-  return { ...run('pin', file, '--out', out), out };
+  return { ...run('pin', file, '--out', out, ...(legacy ? ['--format', 'legacy'] : [])), out };
 }
 
 function expectEscalate(text, reason, options) {
@@ -240,6 +240,25 @@ test('escalates a record that is not approved', () => {
   const file = stamp(write(issueDoc()));
   writeFileSync(file, readFileSync(file, 'utf8').replace('status: approved', 'status: draft'));
   assert.equal(run('pin', file, '--out', path.join(dir, 'draft')).json.reason, 'not_approved');
+});
+
+test('both pin formats require complete approval fields even when the hash matches', () => {
+  const text = readFileSync(stamp(write(issueDoc())), 'utf8');
+  for (const [field, replacement] of [
+    ['revision', ''],
+    ['revision', 'revision: 0\n'],
+    ['revision', 'revision: 9007199254740992\n'],
+    ['approved_by', ''],
+    ['approved_by', 'approved_by:   \n'],
+    ['approved_at', ''],
+    ['approved_at', 'approved_at: 2026-02-30T10:00:00Z\n'],
+    ['base_sha', ''],
+    ['base_sha', 'base_sha:   \n'],
+  ]) {
+    const incomplete = text.replace(new RegExp(`^${field}:.*\\n`, 'm'), replacement);
+    expectEscalate(incomplete, 'record_invalid', { stamped: false });
+    expectEscalate(incomplete, 'record_invalid', { stamped: false, legacy: true });
+  }
 });
 
 test('check and stamp output is unchanged', () => {

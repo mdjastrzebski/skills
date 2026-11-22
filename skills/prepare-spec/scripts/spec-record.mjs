@@ -57,9 +57,12 @@ function utcTimestamp(value) {
   return Number.isFinite(date.valueOf()) && date.toISOString().slice(0, 19) === match[1];
 }
 
+function validRevision(value) {
+  return /^[1-9]\d*$/.test(value) && Number.isSafeInteger(Number(value));
+}
+
 if (command === 'stamp') {
-  const revision = options.get('--revision');
-  if (!/^[1-9]\d*$/.test(revision) || !Number.isSafeInteger(Number(revision))) {
+  if (!validRevision(options.get('--revision'))) {
     invalid('Revision must be a positive integer.');
   }
   if (!utcTimestamp(options.get('--approved-at'))) invalid('Expected a UTC ISO 8601 timestamp ending in Z.');
@@ -312,15 +315,20 @@ function splitDocument(body) {
 
 function pin(source, out, legacy) {
   const { body, result } = inspect(source);
-  if (!result.record) throw new Escalate('missing_record');
-  if (result.record.status !== 'approved') throw new Escalate('not_approved');
+  const approval = result.record;
+  if (!approval) throw new Escalate('missing_record');
+  if (approval.status !== 'approved') throw new Escalate('not_approved');
   if (!result.hash_matches) throw new Escalate('hash_mismatch');
+  if (!validRevision(approval.revision)) throw new Escalate('record_invalid', 'revision must be a positive integer');
+  if (!approval.approved_by) throw new Escalate('record_invalid', 'approved_by is required');
+  if (!utcTimestamp(approval.approved_at)) throw new Escalate('record_invalid', 'approved_at must be a UTC ISO 8601 timestamp');
+  if (!approval.base_sha) throw new Escalate('record_invalid', 'base_sha is required');
   const { meta, summary, fullSpec } = legacy ? { meta: null, fullSpec: body } : splitDocument(body);
   const contents = { document: body, summary, full_spec: fullSpec };
   const files = {};
   const fileSha256 = {};
   const record = {
-    record: result.record,
+    record: approval,
     spec_sha256: result.spec_sha256,
     meta,
     file_sha256: fileSha256,
@@ -334,7 +342,7 @@ function pin(source, out, legacy) {
   }
   files.record = path.join(out, outputs.record);
   writeFileSync(files.record, `${JSON.stringify(record, null, 2)}\n`, 'utf8');
-  return { status: 'ok', spec_sha256: result.spec_sha256, record: result.record, meta, files };
+  return { status: 'ok', spec_sha256: result.spec_sha256, record: approval, meta, files };
 }
 
 function built(source) {
