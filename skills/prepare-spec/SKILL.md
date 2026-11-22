@@ -99,7 +99,7 @@ scope:
 ````
 
 - `difficulty`: `simple`, `moderate` or `hard`, with the signals as a ` # ` comment.
-- `builder`: `<model>/<effort>`, with effort `low`, `medium` or `high`. A higher effort cannot be written here; `pin` escalates such a spec to the text path.
+- `builder`: `<model>/<effort>`, with effort `low`, `medium` or `high` by default. An explicitly requested higher effort (`xhigh`, `max` or `ultra`) requires a user override recorded below.
 - `override`: `none`, or a short description of the user's override; `builder` then holds the overridden choice.
 - `scope`: every file or directory the change reads for behavior or edits, repository-relative, one `  - path` per line, no globs, `..` or leading `/`. For a new file, list its parent directory. Prefer a directory when several files in it change; when unsure, list the directory. Factory reuses the approval without rereading the spec when nothing under `scope` changed, so under-listing is the main risk.
 

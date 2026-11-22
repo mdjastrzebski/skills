@@ -132,6 +132,13 @@ test('escalates documents it cannot verify', () => {
   }
 });
 
+test('pins explicit higher-effort overrides', () => {
+  for (const effort of ['xhigh', 'max', 'ultra']) {
+    const overridden = meta.replace('sonnet/high', `sol/${effort}`).replace('override: none', 'override: user requested higher effort');
+    assert.equal(pin(issueDoc({ metaBlock: overridden })).json.meta.builder_effort, effort);
+  }
+});
+
 test('argument errors exit 2', () => {
   const file = stamp(write(issueDoc()));
   assert.equal(run('pin', file).code, 2);

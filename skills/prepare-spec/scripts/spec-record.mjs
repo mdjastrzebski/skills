@@ -223,9 +223,12 @@ function parseMeta(lines) {
   };
   const difficulty = scalar('difficulty');
   if (!['simple', 'moderate', 'hard'].includes(difficulty)) throw new Escalate(reason, `bad difficulty ${difficulty}`);
-  const builder = /^([A-Za-z0-9._-]+)\/(low|medium|high)$/.exec(scalar('builder'));
-  if (!builder) throw new Escalate(reason, 'builder must be model/effort with effort low, medium or high');
+  const builder = /^([A-Za-z0-9._-]+)\/(low|medium|high|xhigh|max|ultra)$/.exec(scalar('builder'));
+  if (!builder) throw new Escalate(reason, 'builder must be model/effort with a supported effort');
   const override = scalar('override');
+  if (['xhigh', 'max', 'ultra'].includes(builder[2]) && override === 'none') {
+    throw new Escalate(reason, 'effort above high requires a user override');
+  }
   const scope = fields.get('scope').list;
   if (!scope?.length) throw new Escalate(reason, 'scope must list at least one path');
   const seen = new Set();
