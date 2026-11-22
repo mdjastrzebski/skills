@@ -8,6 +8,7 @@
 - Resume interrupted fixes from saved verdicts and verified local commits in every execution mode.
 - Assign round IDs after splitting compound findings and merging duplicate reports.
 - Recover a completed push and its review inputs if the round stops before publication.
+- Recover corrective commits and verify that the final diff retains only the in-scope edits.
 
 ## 0.10.0 (2026-11-22)
 
