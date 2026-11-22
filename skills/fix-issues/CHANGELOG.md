@@ -4,6 +4,7 @@
 
 - Accept an inline modifier that verifies and fixes issues in one context.
 - Call verify-and-fix for single-issue verification and repair.
+- Record each finding and commit for recovery when Factory supplies a recovery file.
 
 ## 0.7.0 (2026-11-22)
 
