@@ -1,13 +1,15 @@
 ---
 name: diagnose-issue
-description: Use when the user asks to diagnose, reproduce, or triage a GitHub issue, verify that a GitHub pull request fixes a reported problem, or when factory sends an issue, a PR, or both for diagnosis.
+description: Use when the user asks to diagnose, reproduce, or triage a GitHub issue, verify that a GitHub pull request fixes a reported problem, or when a calling workflow sends an issue, a PR, or both for diagnosis and wants the report back.
 metadata:
-  version: "0.3.1"
+  version: "0.4.0"
 ---
 
 # Diagnose Issue
 
 Accept a GitHub issue, a candidate fix PR, or both, by URL or repository-qualified number. Use repository context for bare numbers when it identifies the target unambiguously. An issue alone gets a diagnosis. With a PR, also verify the candidate fix at a specific commit. Reuse a report, baseline, reproduction, or target head SHA when the caller supplies one.
+
+When a calling workflow invokes the skill, work headless: return the report to the caller instead of presenting it in chat. **PR mode** is the headless call with a PR plus pinned base and head SHAs; the rules marked PR mode below apply to it.
 
 ## 1. Resolve the report and pin the revisions
 
@@ -36,14 +38,14 @@ query($owner: String!, $name: String!, $number: Int!, $endCursor: String) {
 
 ## 2. Reproduce and trace
 
-- For Factory's existing PR diagnosis, first try the project's standard supported setup on the pinned PR base. If reproduction requires custom mocks or a different runner, record the deviation and check project guidance, test configuration, or CI for evidence of support. Mark observations from an unverified setup as provisional and continue to the candidate comparison when the same reproduction can run on both revisions.
+- In PR mode, first try the project's standard supported setup on the pinned PR base. If reproduction requires custom mocks or a different runner, record the deviation and check project guidance, test configuration, or CI for evidence of support. Mark observations from an unverified setup as provisional and continue to the candidate comparison when the same reproduction can run on both revisions.
 - Use the caller's reproduction or write the smallest failing test or script that exercises the reported behavior on the unmodified base. Use the existing test convention when practical. Record the command, inputs, expected result, and observed failure. Rule out setup failures, unrelated failures, and assumptions in the reproduction.
 - Trace the failure to the responsible code or configuration and cite the evidence. If it only occurs on a different version, say which version and what happens on the target base. When a reproduction cannot be established, record what was tried and what evidence is missing.
 - Save the reproduction source, relative destination, fixtures or setup, run command, and observed failure for the caller. Leave the target checkout clean. In standalone use, show where to find the artifacts.
 
 ## 3. Verify the candidate PR
 
-Run the same reproduction and expected-behavior assertion on the pinned head with equivalent inputs, fixtures, and setup. For Factory's existing PR diagnosis, if the pinned head does not contain the pinned base, integrate that head into the pinned base in an isolated checkout and test the integrated revision. Record both SHAs and the integration tested. If integration conflicts or the comparison is blocked, report `INCONCLUSIVE` and explain the blocker. Keep the reproduction independent of changes to the PR's own tests. Trace how the diff affects the cause, run relevant regression checks, and record the commands, outcomes, and check failures for both revisions.
+Run the same reproduction and expected-behavior assertion on the pinned head with equivalent inputs, fixtures, and setup. In PR mode, if the pinned head does not contain the pinned base, integrate that head into the pinned base in an isolated checkout and test the integrated revision. Record both SHAs and the integration tested. If integration conflicts or the comparison is blocked, report `INCONCLUSIVE` and explain the blocker. Keep the reproduction independent of changes to the PR's own tests. Trace how the diff affects the cause, run relevant regression checks, and record the commands, outcomes, and check failures for both revisions.
 
 | Verification verdict | Evidence |
 | --- | --- |
@@ -55,7 +57,7 @@ Re-read the current head before reporting verification. If it moved, name the te
 
 ## 4. Return diagnosis and evidence
 
-For Factory's existing PR diagnosis, if the conclusion depends on a setup whose support could not be established, report `NEEDS_INFO` for the diagnosis and `INCONCLUSIVE` for verification. Include any provisional comparison results and state which evidence of support is missing.
+In PR mode, if the conclusion depends on a setup whose support could not be established, report `NEEDS_INFO` for the diagnosis and `INCONCLUSIVE` for verification. Include any provisional comparison results and state which evidence of support is missing.
 
 | Verdict | Evidence and next step |
 | --- | --- |
@@ -66,4 +68,4 @@ For Factory's existing PR diagnosis, if the conclusion depends on a setup whose 
 
 Return the report source, diagnosis verdict, behavior, baseline, reproduction and result, root cause or evidence, and next step. For a PR, also return its URL, pinned refs and SHAs, verification verdict, checks, and remaining gaps. For a `CONFIRMED` report without a candidate PR, return a concise summary and a full fix plan suitable for approval and handoff to `implement-spec`. Each fix plan starts by adding or copying the reproduction and running it on the unchanged implementation, then making the fix and rerunning the reproduction and relevant checks. Include enough detail to rebuild the reproduction without access to a scratch file.
 
-Return the diagnosis to the caller in factory mode or present it in chat in standalone mode. Keep any reply in draft form until the user explicitly approves posting that reply to the source issue. Diagnosis approval alone authorizes no issue comment or other issue mutation. After approval, post exactly the approved reply with authenticated `gh issue comment` or the equivalent GitHub MCP tool, and verify that it was posted.
+Return the diagnosis to the caller when headless, including PR mode, or present it in chat in standalone mode. Keep any reply in draft form until the user explicitly approves posting that reply to the source issue. Diagnosis approval alone authorizes no issue comment or other issue mutation. After approval, post exactly the approved reply with authenticated `gh issue comment` or the equivalent GitHub MCP tool, and verify that it was posted.

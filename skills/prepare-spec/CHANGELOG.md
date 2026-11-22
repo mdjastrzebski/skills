@@ -5,6 +5,7 @@
 - Rename pipeline mode to headless mode; behavior is unchanged.
 - Document `check`, `pin` and `built` as the interface other skills use to read specs and build records, with their JSON output.
 - Describe `scope` as the approval reuse scope and use a neutral example.
+- Describe callers generically instead of naming Factory; after saving, report the command for whichever build-and-review workflow is installed.
 
 ## 0.4.0 (2026-11-22)
 

@@ -1,6 +1,6 @@
 ---
 name: implement-spec
-description: Use when the user asks to build a spec or fix plan, or when `prepare-spec` or Factory hands off an approved spec to build. Runs the build in a subagent sized to the spec's difficulty. Interactive by default; use headless mode when Factory invokes the skill or the user explicitly requests a draft PR, including to find or adjust the PR already built from a saved spec. Input that is not an approved spec goes through `prepare-spec` first.
+description: Use when the user asks to build a spec or fix plan, or when `prepare-spec` or a calling workflow hands off an approved spec to build. Runs the build in a subagent sized to the spec's difficulty. Interactive by default; use headless mode when a calling workflow invokes the skill or the user explicitly requests a draft PR, including to find or adjust the PR already built from a saved spec. Input that is not an approved spec goes through `prepare-spec` first.
 metadata:
   version: "0.5.0"
 ---
@@ -26,7 +26,7 @@ Require:
 - the approval record: who approved which version, and when
 - the build estimate: difficulty and the recommended model and effort, with any user override. Use `meta.difficulty`, `meta.builder_model`/`meta.builder_effort` and `meta.override` when available. For a legacy pin, take the estimate and any override from the caller's explicit return.
 
-For a saved-spec locator (a `SPEC.md` path or spec issue), first have `prepare-spec` validate the stored text, branch, hash, and grounding commit. A file without a record, or a `Spec:` issue without one, needs approval. Use the validated revision it returns. When Factory passes the pinned files and validated record, build from that handoff without reopening the store. For a diagnosed fix plan, use the caller's diagnosis approval.
+For a saved-spec locator (a `SPEC.md` path or spec issue), first have `prepare-spec` validate the stored text, branch, hash, and grounding commit. A file without a record, or a `Spec:` issue without one, needs approval. Use the validated revision it returns. When a caller passes the pinned files and validated record, build from that handoff without reopening the store. For a diagnosed fix plan, use the caller's diagnosis approval.
 
 For other input that lacks approval for this version or has a material gap, use `prepare-spec` interactively with the reason it needs approval. In headless mode return `not_approved` to the caller (see [Headless stops](#headless-stops)). Reuse exact approval when it covers the input.
 

@@ -4,6 +4,7 @@
 
 - Hand fix recovery to `fix-issues`: each review round passes its recovery file as that skill's `state FILE` and verifies the round's commits through its procedure.
 - Find the PR for a saved spec, the Adjust spec difference and the handoff's build-record edits through `implement-spec`; ambiguous matches still ask you which PR or spec to use.
+- Call `diagnose-issue` through its PR mode, including for existing PR review, and `prepare-spec` and `implement-spec` through their headless modes.
 
 ## 0.12.0 (2026-11-22)
 
