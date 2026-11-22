@@ -245,15 +245,16 @@ Open Final handoff before launching the handoff owner or starting its procedure 
 
 Prepare the PR description's refreshed `## Summary` from the facts: two to five bullets of what changed with key files, then **Try it:** and **Checks:** lines, so it matches the final code. For Adjust, also prepare the new `spec-built` block with the pinned revision and hash, filled from `record.json` by the shell, and for a local spec the collapsed `<details><summary>Spec</summary>` document from `document.md`. For a legacy PR, the replacement removes its `## Spec rev N` section and uses the layout in `implement-spec`. Use `scripts/factory.mjs section --body FILE --heading TEXT [--match-prefix] --content FILE --out FILE` for the `## Summary` section. A legacy spec section is a verbatim document that can contain headings equal to or higher than the containing heading; in that case run the helper on a scratch file with only the old section's heading, and use the output to replace the span from that heading through the exact old spec body saved in the checkpoint. Supply the replacements and evidence identifying each old span to the orchestrator. The orchestrator re-reads the current description, confirms each old span matches uniquely, then applies only those replacements and verifies them with `spec-record.mjs built`, preserving `Closes #N`, unrelated content and the ledger. If the description already matches on resume, verify it and continue.
 
-Prepare the `Final handoff` comment with the final comparison, facts, checks, source report and verification evidence where applicable, plus these sections:
+Also prepare a `## Reviewer notes` section for the end of the PR description, after `Closes #N` and the `spec-built` block and before the Evidence trail, with these bullets in order:
 
-- **Review verdicts** — table with Review Round, finding, severity, difficulty, verdict and commit or reason, using the review round layout's values. Link reviews, replies and source comments. Record clean rounds explicitly.
-- **Deferred items** — remaining work, including failures and why they remain open.
-- **Follow-ups** — pre-existing findings with their location, evidence and round.
-- **Open questions** — read `rounds.N.open_questions` for each completed round and include unresolved decisions or verification still needed from a human reviewer, with the originating round.
-- **Where to look first** — review order and key files from the facts.
+- **Where to look first:** review order and key files from the facts, with links to the PR's files.
+- **Deferred:** remaining work, including failures and why they remain open.
+- **Follow-ups:** pre-existing findings with their location, evidence and Review Round.
+- **Open questions:** read `rounds.N.open_questions` for each completed round and include unresolved decisions or verification still needed from a human reviewer, with the originating Review Round.
 
-Use `None` for empty sections. The orchestrator rechecks the comparison with `compare same` before publishing, closes the window, and adds **Diagnostics** with the stage models, tokens and costs, the run total, ledger link and Final handoff block. Post and verify the comment and its URL. Add its row and run total to the ledger and verify the description.
+Write `None` after an empty label. Insert or replace it with `scripts/factory.mjs section --body FILE --heading "## Reviewer notes" --content FILE --out FILE`, which places a new section before the Evidence trail, and give the orchestrator the replacement with the other description edits.
+
+Prepare the `Final handoff` comment with the final comparison, facts, checks, source report and verification evidence where applicable. Do not repeat the findings, which the round reviews already list. Instead, give one line per Review Round with its review link and counts (for example, `- Review Round 1: 3 findings — 2 fixed, 1 deferred`, or `clean`), then a link to the PR description's Reviewer notes. The orchestrator rechecks the comparison with `compare same` before publishing, applies the description edits, closes the window, and adds **Diagnostics** with the stage models, tokens and costs, the run total, ledger link and Final handoff block. Post and verify the comment and its URL. Add its row and run total to the ledger and verify the description.
 
 ## 7. Mark the PR ready and notify
 
