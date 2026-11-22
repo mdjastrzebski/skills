@@ -429,7 +429,7 @@ function rightLines(diff) {
       if (file !== null && !anchors.has(file)) anchors.set(file, new Set());
     }
     if (!line.startsWith("@@")) continue;
-    const match = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(?:[ \t].*)?\r?$/.exec(line);
+    const match = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(?:[ \t][^\n]*)?\r?$/.exec(line);
     requireInput(match, "invalid unified diff hunk header");
     const [, leftStart, leftCount = "1", rightStart, rightCount = "1"] = match;
     const [firstLeftLine, left, firstRightLine, right] = [leftStart, leftCount, rightStart, rightCount].map(Number);
