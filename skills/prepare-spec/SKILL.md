@@ -1,8 +1,8 @@
 ---
 name: prepare-spec
-description: Use when the user wants a rough idea turned into an approved spec, says "grill me on this", "spec this out", "implement this idea", or "build this idea", asks to revise a saved spec ("revise #123", "change the spec", "update SPEC.md"), or Factory sends an idea or a supplied spec for approval. Interactive by default; use pipeline mode when Factory invokes the skill or the user explicitly requests it. Does not write code.
+description: Use when the user wants a rough idea turned into an approved spec, says "grill me on this", "spec this out", "implement this idea", or "build this idea", asks to revise a saved spec ("revise #123", "change the spec", "update SPEC.md"), or Factory sends an idea or a supplied spec for approval. Interactive by default; use headless mode when Factory invokes the skill or the user explicitly requests it. Does not write code.
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
 ---
 
 # Prepare Spec
@@ -11,11 +11,11 @@ Turn a rough idea into an approved spec, or validate a supplied spec and get it 
 
 ## Intake and store
 
-Work interactively by default. In pipeline mode, resolve routine implementation questions as stated assumptions and return the result to the caller. For an idea or supplied text, follow phases 1–5. For a saved spec, load its issue body or working-tree-root `SPEC.md`, run `node SKILL_DIR/scripts/spec-record.mjs check FILE` on those bytes, and keep its store. For an issue, fetch the body itself into a scratch file with the shell, for example `gh issue view N --repo OWNER/REPO --json body --jq .body > FILE`, without JSON quoting or CLI display formatting and without printing it. Without `gh`, launch a light-tier worker at medium effort that launches no agents, fetches the body with the available GitHub tool, writes it byte for byte to the given path, and returns only the path. When a caller needs pinned files, run `pin` (see [Pin a saved spec](#pin-a-saved-spec)) instead of `check`. Use the directory containing this SKILL.md for `SKILL_DIR`. Only this skill writes the store.
+Work interactively by default. In headless mode, resolve routine implementation questions as stated assumptions and return the result to the caller. For an idea or supplied text, follow phases 1–5. For a saved spec, load its issue body or working-tree-root `SPEC.md`, run `node SKILL_DIR/scripts/spec-record.mjs check FILE` on those bytes, and keep its store. For an issue, fetch the body itself into a scratch file with the shell, for example `gh issue view N --repo OWNER/REPO --json body --jq .body > FILE`, without JSON quoting or CLI display formatting and without printing it. Without `gh`, launch a light-tier worker at medium effort that launches no agents, fetches the body with the available GitHub tool, writes it byte for byte to the given path, and returns only the path. When a caller needs pinned files, run `pin` (see [Pin a saved spec](#pin-a-saved-spec)) instead of `check`. Use the directory containing this SKILL.md for `SKILL_DIR`. Only this skill writes the store.
 
 - **Create in cloud** (an ephemeral container, e.g. `CLAUDE_CODE_REMOTE=true` or a Codex cloud task): use a GitHub issue in the target repository, titled `Spec: <title>`, without a label. Create it only after approval. If issue creation or editing is unavailable, report the missing access, print the approved summary and full spec in chat, and stop. Do not fall back to a local file.
 - **Create locally:** ask once with the approval summary whether to save to `SPEC.md` (recommended) or to a GitHub issue. If the session type is unclear, ask. Retain an explicit store choice.
-- **Revise:** remember the loaded revision N. Ground and discuss only the requested change, one question at a time over as many turns as needed. Present only the changed summary parts against the loaded spec. Keep the current approved document until the user approves the change, except when they request a local draft. Save to the same file or issue at N+1 in phase 5. For a recordless draft, use the revision remembered from this conversation, else the `revision` in the `spec-built` block of the linked PR description (issue closing references or `Closes #N`, or current branch head for a file; `node SKILL_DIR/scripts/spec-record.mjs built FILE` reads it, and a legacy PR has a `## Spec rev N` heading instead). Increment that revision, or start at 1 if there is none.
+- **Revise:** remember the loaded revision N. Ground and discuss only the requested change, one question at a time over as many turns as needed. Present only the changed summary parts against the loaded spec. Keep the current approved document until the user approves the change, except when they request a local draft. Save to the same file or issue at N+1 in phase 5. For a recordless draft, use the revision remembered from this conversation, else the `revision` in the `spec-built` block of the linked PR description (issue closing references or `Closes #N`, or current branch head for a file; [`built`](#spec-record-interface) reads it, and a legacy PR has a `## Spec rev N` heading instead). Increment that revision, or start at 1 if there is none.
 
 ### Local file and requested drafts
 
@@ -40,6 +40,18 @@ node SKILL_DIR/scripts/spec-record.mjs pin FILE --out DIR
 After resolving approval, branch and grounding for a saved spec that escalated on format or metadata, run `node SKILL_DIR/scripts/spec-record.mjs pin FILE --out DIR --format legacy` on the same file into a fresh directory and require `ok`. This still verifies the approval and hash. It writes the exact hashed document as both `document.md` and `full-spec.md` and writes `record.json` with their hashes and `meta: null`. Read the build estimate and any override from the approved text, using phase 3 to size the build if needed. Use the document itself to locate the summary when needed. Read the pinned files only where this skill needs the text.
 
 Run the helper tests with `node SKILL_DIR/scripts/spec-record.test.mjs`.
+
+### Spec record interface
+
+This skill owns the spec document, its approval record, and the `spec-built` block a build PR carries. Other skills read them only through these commands, run as `node SKILL_DIR/scripts/spec-record.mjs <command> FILE` on a file the shell wrote, and consume the JSON they print. `stamp` and saving the store stay with this skill.
+
+| Command | Output |
+| --- | --- |
+| `check FILE` | `{spec_sha256, record, hash_matches}`: the hash of the document body and the parsed `spec-record`, or a `null` record |
+| `pin FILE --out DIR [--format legacy]` | `{"status":"ok", spec_sha256, record, meta, files}` with the pinned files, or `{"status":"escalate","reason":…}`, writing nothing |
+| `built FILE` | for a PR description, `{"status":"ok","built":{revision, spec_sha256, issue}}`, or `{source, branch, document_sha256}` in place of `issue` for a local spec after checking its collapsed document, or `{"status":"escalate","reason":…}` with `legacy_section`, `built_missing`, `built_multiple`, `built_invalid`, `built_document_missing` or `built_hash_mismatch` |
+
+Invalid arguments exit 2 and unreadable files exit 1. A changed or missing record, or a document `pin` or `built` cannot verify, is reported as data, not an error.
 
 ## 1. Ground yourself first
 
@@ -97,15 +109,15 @@ difficulty: moderate   # several files in one area, new tests
 builder: sonnet/high
 override: none
 scope:
-  - skills/factory/SKILL.md
-  - skills/prepare-spec/scripts/
+  - src/sync/
+  - test/sync/retry.test.ts
 ```
 ````
 
 - `difficulty`: `simple`, `moderate` or `hard`, with the signals as a ` # ` comment.
 - `builder`: `<model>/<effort>`, with effort `low`, `medium` or `high` by default. An explicitly requested higher effort (`xhigh`, `max` or `ultra`) requires a user override recorded below.
 - `override`: `none`, or a short description of the user's override; `builder` then holds the overridden choice.
-- `scope`: every file or directory the change reads for behavior or edits, repository-relative, one `  - path` per line, no globs, `..` or leading `/`. For a new file, list its parent directory. Prefer a directory when several files in it change; when unsure, list the directory. Factory reuses the approval without rereading the spec when nothing under `scope` changed, so under-listing is the main risk.
+- `scope`: every file or directory the change reads for behavior or edits, repository-relative, one `  - path` per line, no globs, `..` or leading `/`. For a new file, list its parent directory. Prefer a directory when several files in it change; when unsure, list the directory. `scope` is the approval reuse scope: [Validate a saved spec for a build](#validate-a-saved-spec-for-a-build) reuses the approval without rereading the spec when nothing under it changed, so under-listing is the main risk.
 
 Pick from three tiers, at the latest version the harness offers: **light** (Haiku level: Claude `haiku`, GPT `luna`), **standard** (Sonnet level: Claude `sonnet`, GPT `terra`), and **strong** (Opus level: Claude `opus`, GPT `sol`). Use light only for narrow, mechanical tasks whose output is easy to check, especially many small ones in parallel: locating files or call sites, collecting or summarizing data, describing a mechanical block of a diff, or a trivial edit with an exact pattern to copy. Never use light for specs, builds beyond trivial edits, reviews, judging findings, or security-sensitive work. Default to standard. Use low, medium, or high effort only; never `xhigh` or `max`. When a tier at high effort is not enough, move up a tier (`sonnet` → `opus`) instead of raising the effort. Strong at high effort is the ceiling. Use frontier models (Claude `fable`, GPT `astra`) or `xhigh` and higher effort only when the user explicitly asks for them in this run. A user override may choose either; record it as the user's request.
 
@@ -175,5 +187,5 @@ Stamp revision 1 for a new spec, or the revision determined at intake. Give who/
 
 Save the stamped document to the chosen file, or use `gh issue create --title "Spec: <title>" --body-file FILE` / `gh issue edit N --body-file FILE` (or equivalent GitHub MCP). Before replacing a previously loaded document, check for concurrent edits and reconcile changed scope with the user. Before replacing an approved issue revision N, post the current issue body as an issue comment with `gh issue comment N --body-file FILE`: first line `Revision N — superseded by revision N+1`, a blank line, `<details><summary>Revision N</summary>`, a blank line, the exact previous body including its `spec-record`, a blank line, and `</details>`. If the comment cannot be posted, report it and leave the issue unchanged. Read the stored text back into a scratch file and run `check`, then `pin` into a fresh directory; require the expected revision, approved status, `hash_matches: true` and `pin` status `ok`. If GitHub changed the formatting and the hash differs, stamp the fetched body with the same approval fields, update once, and recheck. Material text changes need approval. Report a verification failure before any build.
 
-- **Pipeline or another skill:** return the pinned paths, store location (issue URL or file path), revision, approval record, the parsed `meta` (difficulty, recommended model and effort, any override, scope), and assumptions. For a legacy pin, give the original escalation reason and the build estimate and any override explicitly. Include the revalidation commit when applicable. Callers read the spec from the pinned files.
+- **Headless or another skill:** return the pinned paths, store location (issue URL or file path), revision, approval record, the parsed `meta` (difficulty, recommended model and effort, any override, scope), and assumptions. For a legacy pin, give the original escalation reason and the build estimate and any override explicitly. Include the revalidation commit when applicable. Callers read the spec from the pinned files.
 - **Interactive:** report the saved location and the fresh-session command `$factory <issue URL>` or `$factory SPEC.md`. If the user asked to build now, hand off to Factory with the saved spec, or to `implement-spec` for an explicitly requested build without review.

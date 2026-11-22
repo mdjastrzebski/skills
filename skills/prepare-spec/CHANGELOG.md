@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0 (2026-11-22)
+
+- Rename pipeline mode to headless mode; behavior is unchanged.
+- Document `check`, `pin` and `built` as the interface other skills use to read specs and build records, with their JSON output.
+- Describe `scope` as the approval reuse scope and use a neutral example.
+
 ## 0.4.0 (2026-11-22)
 
 - Write the build estimate and scope as a visible `spec-meta` block in the summary, covered by the approval hash.

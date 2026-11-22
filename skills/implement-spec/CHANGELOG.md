@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0 (2026-11-22)
+
+- Rename pipeline mode to headless mode; behavior is unchanged.
+- Add Locate an existing build, which finds the PR already built from a saved spec and returns `build`, `adjust`, `noop` or `ask` with its evidence and options, and Update the build record, which prepares and applies the `spec-built` block, embedded local spec and `Closes #N` edits. Adjust now finds and diffs the previously built document itself.
+- Read spec hashes and build records only through `prepare-spec`'s documented commands.
+
 ## 0.4.0 (2026-11-22)
 
 - Take a pinned spec by path, brief the builder with the file instead of pasted text, and read the build estimate from `spec-meta`.

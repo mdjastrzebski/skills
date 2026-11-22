@@ -3,6 +3,7 @@
 ## 0.13.0 (2026-11-22)
 
 - Hand fix recovery to `fix-issues`: each review round passes its recovery file as that skill's `state FILE` and verifies the round's commits through its procedure.
+- Find the PR for a saved spec, the Adjust spec difference and the handoff's build-record edits through `implement-spec`; ambiguous matches still ask you which PR or spec to use.
 
 ## 0.12.0 (2026-11-22)
 
