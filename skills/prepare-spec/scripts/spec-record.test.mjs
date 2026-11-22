@@ -174,3 +174,22 @@ test('escalates bad spec-built blocks', () => {
     assert.equal(built(block(keys)).reason, 'built_invalid', keys);
   }
 });
+
+test('escalates a record that is not approved', () => {
+  const file = stamp(write(issueDoc()));
+  writeFileSync(file, readFileSync(file, 'utf8').replace('status: approved', 'status: draft'));
+  assert.equal(run('pin', file, '--out', path.join(dir, 'draft')).json.reason, 'not_approved');
+});
+
+test('check and stamp output is unchanged', () => {
+  // Golden values produced by the version before pin and built were added.
+  const golden = '1e78abc49a7dab8b0a19b73050d90cdd78735afe07aee55d3b4abf40b2413356';
+  const file = write('# Spec: Golden\r\n\r\n## Summary  \r\n\r\nKeep it.\r\n\r\n\r\n');
+  assert.equal(spawnSync(process.execPath, [script, 'check', file], { encoding: 'utf8' }).stdout,
+    `{"spec_sha256":"${golden}","record":null,"hash_matches":null}\n`);
+  execFileSync(process.execPath, [script, 'stamp', file, '--revision', '3', '--approved-by', 'golden',
+    '--approved-at', '2026-01-02T03:04:05Z', '--base-sha', 'deadbeef', '--branch', '']);
+  assert.equal(readFileSync(file, 'utf8'), '<!-- spec-record\nstatus: approved\nrevision: 3\napproved_by: golden\n'
+    + `approved_at: 2026-01-02T03:04:05Z\nbase_sha: deadbeef\nbranch: \nspec_sha256: ${golden}\n-->\n\n`
+    + '# Spec: Golden\n\n## Summary\n\nKeep it.\n');
+});

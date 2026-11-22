@@ -3,7 +3,7 @@
  * Factory local bookkeeping. Node 18+, no GitHub or network access.
  *
  * node factory.mjs diagnostics --stage NAME --usage FILE [--usage FILE]... --out FILE
- *     [--agents FILE] [--mode MODE]
+ *     [--agents FILE] [--mode MODE] [--work TEXT]
  * node factory.mjs agent add --file FILE --stage NAME --id ID --role TEXT --model MODEL
  *     --effort EFFORT [--parent ID] [--run RUN]
  * node factory.mjs agent done --file FILE --id ID --work TEXT [--stopped]
@@ -15,12 +15,14 @@
  * node factory.mjs checkpoint set --file FILE KEY VALUE_JSON
  * node factory.mjs checkpoint append --file FILE KEY VALUE_JSON
  * node factory.mjs stage open --file FILE --stage NAME
- * node factory.mjs stage close --file FILE --stage NAME [--until ISO]
+ * node factory.mjs stage close --file FILE --stage NAME [--until ISO] [--work TEXT]
  *     [--session-id ID] [--transcript PATH]...
  * node factory.mjs compare snapshot --head SHA --base-ref REF --base-sha SHA
  * node factory.mjs compare same --a JSON --b JSON
  * node factory.mjs compare range --round1 JSON --current JSON
  * node factory.mjs verify-commits --from SHA --to SHA --rows FILE
+ *
+ * Tests for agent, diagnostics and usage-report by_source: node scripts/diagnostics.test.mjs
  *
  * Commands return one JSON object. Exit 2 for invalid input, 1 for operational errors.
  * A completed verification may return ok:false with exit 0 to report its findings.
@@ -188,7 +190,7 @@ function ranModel(requested, models) {
   return `${ran} (asked ${requested})`;
 }
 
-function diagnosticsBlock(stage, files, { agents = null, mode = null } = {}) {
+function diagnosticsBlock(stage, files, { agents = null, mode = null, work = null } = {}) {
   const logged = agentRows(agents, stage);
   let reports;
   let failure = null;
@@ -248,7 +250,7 @@ function diagnosticsBlock(stage, files, { agents = null, mode = null } = {}) {
   const modelsOf = (parts) => [...new Set(parts.flatMap((part) => Object.keys(part.models ?? {})))].sort();
   const number = new Map(logged.map((agent, index) => [agent.id, index + 2]));
   const rows = [
-    ["1", "Orchestrator", "—", `${markdownCell(ranModel(null, modelsOf(main)))} · —`, "coordinate stage", ...usageCells(main)],
+    ["1", "Orchestrator", "—", `${markdownCell(ranModel(null, modelsOf(main)))} · —`, isText(work) ? markdownCell(work) : "—", ...usageCells(main)],
     ...logged.map((agent, index) => {
       const parts = byLabel.get(agent.label) ?? [];
       const effort = isText(agent.requested_effort) ? agent.requested_effort : "—";
@@ -679,7 +681,7 @@ function runReport(run, start, end, options) {
 
 function stage(action, argv) {
   const { options } = parseArgs(argv, { required: ["file", "stage"],
-    optional: action === "close" ? ["until", "session-id"] : [], repeated: action === "close" ? ["transcript"] : [] });
+    optional: action === "close" ? ["until", "session-id", "work"] : [], repeated: action === "close" ? ["transcript"] : [] });
   const data = readCheckpoint(options.file, action === "open");
   data.stages ??= {};
   requireInput(isObject(data.stages), "checkpoint stages must be an object");
@@ -709,9 +711,10 @@ function stage(action, argv) {
     const allParts = [...parts, { start: partStart, end, usage,
       session_id: options["session-id"] ?? data.run?.session_id ?? null }];
     const { block, ...summary } = diagnosticsBlock(name, allParts.map((part) => part.usage),
-      { agents: data.agents ?? null, mode: isText(data.execution_mode) ? data.execution_mode : null });
+      { agents: data.agents ?? null, mode: isText(data.execution_mode) ? data.execution_mode : null,
+        work: options.work ?? current.work ?? null });
     writeAtomic(diagnostics, block);
-    result = { start, end, usage, diagnostics, ...summary };
+    result = { start, end, usage, diagnostics, ...summary, ...(options.work ?? current.work ? { work: options.work ?? current.work } : {}) };
     if (splitting || parts.length) Object.assign(result, { parts: allParts, split_pending: splitting });
   }
   assign(data.stages, name, result);
@@ -833,7 +836,7 @@ function main(argv) {
     return { checkpoint, stage, compare, agent }[command](action, rest);
   }
   const flags = {
-    diagnostics: { required: ["stage", "usage", "out"], repeated: ["usage"], optional: ["agents", "mode"] },
+    diagnostics: { required: ["stage", "usage", "out"], repeated: ["usage"], optional: ["agents", "mode", "work"] },
     ledger: { required: ["body", "rows", "out"] },
     section: { required: ["body", "heading", "content", "out"], switches: ["match-prefix"] },
     review: { required: ["commit", "body", "comments", "diff", "out"] },
@@ -847,7 +850,7 @@ function main(argv) {
       const loaded = readJson(options.agents);
       agents = Array.isArray(loaded) ? loaded : loaded?.agents ?? null;
     }
-    const { block, ...result } = diagnosticsBlock(options.stage, options.usage, { agents, mode: options.mode ?? null });
+    const { block, ...result } = diagnosticsBlock(options.stage, options.usage, { agents, mode: options.mode ?? null, work: options.work ?? null });
     fs.writeFileSync(options.out, block);
     return result;
   }
