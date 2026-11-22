@@ -4,6 +4,7 @@
 
 - Take a pinned spec by path, brief the builder with the file instead of pasted text, and read the build estimate from `spec-meta`.
 - Describe the implementation in the draft PR with `Closes #N` and a `spec-built` block instead of repeating an issue spec under `## Spec rev N`; a local `SPEC.md` is kept collapsed in the PR.
+- Write **Checks:** as a bullet list, one check per bullet, with a `Not run:` bullet for skipped checks.
 
 ## 0.3.0 (2026-11-22)
 

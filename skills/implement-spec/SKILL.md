@@ -89,7 +89,11 @@ The spec issue is the spec's home, so the PR does not repeat it. Write, in this 
 - <what changed, two to five bullets with key files>
 
 **Try it:** <shortest steps>
-**Checks:** <tests, lint, typecheck, reproduction, with results>
+
+**Checks:**
+
+- <one check and its result per bullet: tests, lint, typecheck, reproduction>
+- Not run: <skipped checks, when any>
 
 Closes #42
 

@@ -131,7 +131,11 @@ Record one probe line for the findings header and the review body, for example `
   | F2 | Changelog misses a bullet (`CHANGELOG.md:5`) — details below | nit | normal | DEFERRED: low-severity improvement | — |
   | F3 | [Retry loop unbounded](<link>) | important | hard | commented | — |
 
-  **Checks:** node --check ✅ · check-versions.sh ✅
+  **Checks:**
+
+  - node --check ✅
+  - check-versions.sh ✅
+
   **Open questions:**
   - <decision or verification a human still needs to make>
 
@@ -141,7 +145,7 @@ Record one probe line for the findings header and the review body, for example `
 - Header bullets are `- Label: value`, in that order. `Reviewed:` is a compare link from merge base to reviewed head (the head repository's URL for a fork PR) with short SHAs as its text. `Reviewer:` is the model and effort that ran, plus `(not a subagent)` when the review ran directly. `Fixes:` is `published through <full SHA>`, `kept local on <branch>: <reason>`, or `none`.
 - Write SHAs as plain text, never in backticks, so GitHub links them; use the full SHA, which GitHub shortens. In a fork PR, write `OWNER/REPO@<sha>`.
 - One row per commented or fixed finding, in ID order. Finding is a short title linked to its inline comment. Verdict is the `fix-issues` verdict with `: <reason>` when there is no commit, `commented` for a finding only commented, or `not fixed: <reason>`. Commit is the fix SHA or `—`. Put location, issue and impact in the body only for findings without an inline position. A clean review has no table and says `No findings.`
-- End with one `**Checks:**` line (the checks `fix-issues` and the reviewer ran, with results; omit it when nothing ran), an `**Open questions:**` list when there are any, then the Diagnostics block from [Diagnostics](#diagnostics).
+- End with a `**Checks:**` label and a bullet list, one check and its result per bullet (the checks `fix-issues` and the reviewer ran, with results; omit it when nothing ran), an `**Open questions:**` list when there are any, then the Diagnostics block from [Diagnostics](#diagnostics).
 - Anchor commented findings inline on the reviewed diff where possible, each prefixed with its ID (`F3:`) and written as the issue and impact in one or two plain sentences. Put a finding in the review body when there is no usable inline position or GitHub rejects its anchor.
 - Cite a fix commit only after its push succeeds.
 - Verify the review was posted, and report its link in chat with the outcome summary.
