@@ -46,7 +46,7 @@
  * Output: {harness, session_id, window, sources, by_source, models, totals, prices_as_of,
  *   skipped_lines, format_warnings}. by_source has one entry per transcript with its role, the
  *   Factory launch label (factory:<run>:<agent>, from a Claude Code agent-<id>.meta.json
- *   description or the first label in the transcript's opening records, else null), the
+ *   description or the first label stamped at or after the rollout's own session_meta start, else null), the
  *   requested model when the harness records it, and that transcript's models and totals. Per model: input, output, reasoning_output (Codex only, included in output),
  *   cache_read, cache_write_5m, cache_write_1h, messages (Claude) or events (Codex), cost_usd.
  *   Codex input excludes cached tokens. A model with no price has cost_usd null and the totals
@@ -560,7 +560,7 @@ function detectHarness(opts, cwd) {
 const LABEL = /factory:[A-Za-z0-9]+:[A-Za-z0-9._-]+/;
 
 // Factory labels each launch. Claude Code keeps the launch description in agent-<id>.meta.json;
-// otherwise (and for Codex) use the first label in the transcript's opening records.
+// otherwise (and for Codex) use the first label stamped at or after the transcript's own start (a forked child replays its parent's history, which may carry the parent's label).
 function sourceLabel(src, harness) {
   if (src.role === "main") return { label: null, requested_model: null };
   if (harness === "claude") {
@@ -573,11 +573,33 @@ function sourceLabel(src, harness) {
     }
   }
   try {
-    const head = fs.readFileSync(src.path, "utf8").split("\n").slice(0, 200).join("\n");
-    return { label: LABEL.exec(head)?.[0] ?? null, requested_model: null };
+    return { label: ownLaunchLabel(fs.readFileSync(src.path, "utf8")), requested_model: null };
   } catch {
     return { label: null, requested_model: null };
   }
+}
+
+// A forked child rollout replays the parent's history, which can hold the parent's own label.
+// Only a label stamped at or after the child's own session_meta start is its launch label.
+function ownLaunchLabel(text) {
+  let start = null;
+  let lines = 0;
+  for (const line of text.split("\n")) {
+    if (!line.trim()) continue;
+    let rec;
+    try { rec = JSON.parse(line); } catch { rec = null; }
+    if (rec && rec.type === "session_meta" && start === null) {
+      const t = Date.parse(rec.payload && rec.payload.timestamp);
+      if (!Number.isNaN(t)) start = t;
+      continue;
+    }
+    const label = LABEL.exec(line)?.[0];
+    if (!label) { if (++lines > 200 && start === null) return null; continue; }
+    const at = Date.parse(rec && rec.timestamp);
+    if (start !== null && !Number.isNaN(at) && at < start) continue;
+    return label;
+  }
+  return null;
 }
 
 function sourceUsage(src, harness, countKey, prices) {

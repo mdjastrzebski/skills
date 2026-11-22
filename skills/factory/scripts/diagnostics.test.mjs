@@ -113,6 +113,31 @@ test("Codex: labels found in the rollout, cost N/A without prices", () => {
   assert.match(block, /\*\*N\/A\*\* \|\n/);
 });
 
+test("Codex: a nested child keeps its own label, not the parent's inherited one", () => {
+  const root = path.join(dir, "codex-nested");
+  const tokens = (minute, input) => ({ timestamp: `2026-11-22T10:${minute}:00Z`, type: "event_msg",
+    payload: { type: "token_count", info: { total_token_usage: { input_tokens: input, output_tokens: 10, cached_input_tokens: 0 } } } });
+  const user = (ts, text) => ({ timestamp: ts, type: "response_item",
+    payload: { type: "message", role: "user", content: [{ type: "input_text", text }] } });
+  const main = path.join(root, "rollout-main.jsonl");
+  jsonl(main, [{ timestamp: "2026-11-22T10:00:00Z", type: "session_meta", payload: { id: "m1", cwd: dir } },
+    { timestamp: "2026-11-22T10:00:01Z", type: "turn_context", payload: { model: "terra" } }, tokens("01", 1000)]);
+  const owner = path.join(root, "rollout-owner.jsonl");
+  jsonl(owner, [{ timestamp: "2026-11-22T10:02:00Z", type: "session_meta", payload: { id: "o1", parent_thread_id: "m1", timestamp: "2026-11-22T10:02:00Z" } },
+    user("2026-11-22T10:02:01Z", "factory:run2:1\nRun the round."),
+    { timestamp: "2026-11-22T10:02:02Z", type: "turn_context", payload: { model: "terra" } }, tokens("03", 2000)]);
+  const worker = path.join(root, "rollout-worker.jsonl");
+  jsonl(worker, [{ timestamp: "2026-11-22T10:04:00Z", type: "session_meta", payload: { id: "w1", parent_thread_id: "o1", timestamp: "2026-11-22T10:04:00Z" } },
+    user("2026-11-22T10:02:01Z", "factory:run2:1\nRun the round."),
+    user("2026-11-22T10:04:01Z", "factory:run2:2\nReview the diff."),
+    { timestamp: "2026-11-22T10:04:02Z", type: "turn_context", payload: { model: "terra" } }, tokens("05", 3000)]);
+  const report = JSON.parse(node("usage-report.mjs", ["--harness", "codex", "--since", since, "--until", until,
+    "--transcript", main, "--transcript", owner, "--transcript", worker]));
+  const labels = Object.fromEntries(report.by_source.map((b) => [path.basename(b.path), b.label]));
+  assert.equal(labels["rollout-owner.jsonl"], "factory:run2:1");
+  assert.equal(labels["rollout-worker.jsonl"], "factory:run2:2");
+});
+
 test("unreadable usage still shows the tree, models and work", () => {
   const usage = path.join(dir, "bad-usage.json");
   fs.writeFileSync(usage, JSON.stringify({ error: "no transcript for this session" }));
