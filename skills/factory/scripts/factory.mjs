@@ -389,12 +389,13 @@ function rightLines(diff) {
       file = diffPath(line.slice(4).replace(/\r$/, ""));
       if (file !== null && !anchors.has(file)) anchors.set(file, new Set());
     }
-    const match = /^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/.exec(line);
-    if (match) {
-      const left = Number(match[1] ?? 1);
-      const right = Number(match[3] ?? 1);
-      if (left || right) hunk = { left, right, line: Number(match[2]) };
-    }
+    if (!line.startsWith("@@")) continue;
+    const match = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(?:[ \t].*)?\r?$/.exec(line);
+    requireInput(match, "invalid unified diff hunk header");
+    const [, leftStart, leftCount = "1", rightStart, rightCount = "1"] = match;
+    const [firstLeftLine, left, firstRightLine, right] = [leftStart, leftCount, rightStart, rightCount].map(Number);
+    requireInput([firstLeftLine, left, firstRightLine, right].every(isCount), "invalid unified diff hunk header range");
+    if (left || right) hunk = { left, right, line: firstRightLine };
   }
   requireInput(!hunk, "incomplete unified diff hunk");
   return anchors;
