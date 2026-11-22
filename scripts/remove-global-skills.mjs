@@ -21,7 +21,7 @@ function fileInfo(path, inspect = statSync) {
   try {
     return inspect(path, { throwIfNoEntry: false });
   } catch (error) {
-    if (error.code === 'EACCES' || error.code === 'EPERM') return undefined;
+    if (['EACCES', 'EPERM', 'ELOOP'].includes(error.code)) return undefined;
     throw error;
   }
 }
@@ -31,7 +31,7 @@ function skillNames(dir) {
   try {
     names = readdirSync(dir);
   } catch (error) {
-    if (['ENOENT', 'ENOTDIR', 'EACCES'].includes(error.code)) return [];
+    if (['ENOENT', 'ENOTDIR', 'EACCES', 'ELOOP'].includes(error.code)) return [];
     throw error;
   }
   return names
