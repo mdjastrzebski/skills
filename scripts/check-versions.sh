@@ -21,6 +21,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "$0")/.." && pwd)"
+source "$repo/scripts/skill-base-path.sh"
 if [ $# -ge 1 ]; then
   base="$1"
 elif git -C "$repo" rev-parse --verify --quiet "origin/main^{commit}" >/dev/null; then
@@ -109,9 +110,11 @@ for dir in "$repo"/skills/*/ "$repo"/skills/legacy/*/; do
 
   # Rules 3 and 4: compare with the base version.
   if [ "$cur_ok" -eq 1 ]; then
-    base_ver="$( { git_ show "$base_commit:skills/$name/SKILL.md" 2>/dev/null \
-      || git_ show "$base_commit:skills/legacy/$name/SKILL.md" 2>/dev/null \
-      || true; } | read_version)"
+    base_path="$(skill_base_path "$repo" "$base_commit" "${dir#"$repo"/}/SKILL.md")"
+    base_ver=""
+    if [ -n "$base_path" ]; then
+      base_ver="$(read_version < <(git -C "$repo" show "$base_commit:$base_path"))"
+    fi
     [[ "$base_ver" =~ $version_re ]] || base_ver=""
 
     changed=0

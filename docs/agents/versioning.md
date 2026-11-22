@@ -41,6 +41,7 @@ metadata:
 - Agents pick patch or minor only. Major bumps, including `0.x` to `1.0.0`, are the user's call: if a change to a 1.0+ skill looks breaking, stop and ask.
 - A new skill starts at `0.1.0` with an "Initial release." entry and gets no further bump on the branch that creates it.
 - Moving a skill into or out of `skills/legacy/` is a patch bump with the bullet "Moved to legacy." or "Revived from legacy."
+- A renamed skill continues its old version and changelog. Make a pure `git mv` commit (include the updated discovery links) before editing content so Git can detect the rename. Then minor-bump the new name and start its changelog entry with “Renamed from `<old-name>`.” The pure move alone correctly fails the version check until the follow-up bump, so run the check before that commit, record the expected failure, and verify the complete branch before publishing.
 
 ## Scripts
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0 (2026-11-22)
+
+- Use a saved spec to build a draft PR, adjust its existing PR, or report that the PR already matches.
+- Pin the approved revision for build and review. At handoff, report any newer spec.
+- Find PRs by their spec issue or local feature branch. Link issue specs with `Closes #N` and preserve the evidence trail across adjustments.
+- Delegate all writes to the spec store to `prepare-spec`.
+
 ## 0.8.0 (2026-11-21)
 
 - Give the reviewer the repo's review guidance (root `REVIEW.md`, else `AGENTS.md` or `CLAUDE.md`) from the PR's merge base so proposed changes to guidance cannot set their own review rules. Prefer a reviewer separate from the build, tag pre-existing findings, and name the reviewer and guidance in each round review.

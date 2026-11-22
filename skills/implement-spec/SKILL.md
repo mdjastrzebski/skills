@@ -1,8 +1,8 @@
 ---
 name: implement-spec
-description: Use when the user asks to build a spec or fix plan, or when `clarify-idea` or Factory hands off an approved spec to build. Runs the build in a subagent sized to the spec's difficulty. Interactive by default; use pipeline mode when Factory invokes the skill or the user explicitly requests a draft PR. Input that is not an approved spec goes through `clarify-idea` first.
+description: Use when the user asks to build a spec or fix plan, or when `prepare-spec` or Factory hands off an approved spec to build. Runs the build in a subagent sized to the spec's difficulty. Interactive by default; use pipeline mode when Factory invokes the skill or the user explicitly requests a draft PR. Input that is not an approved spec goes through `prepare-spec` first.
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # Implement Spec
@@ -12,7 +12,7 @@ Build an approved spec in a subagent of the right model and reasoning effort, ve
 ## Mode
 
 - **Interactive (default):** build in the current checkout and report in chat.
-- **Pipeline:** build on a new branch, publish a draft PR, and return the result to the caller. See [Pipeline delivery](#pipeline-delivery).
+- **Pipeline:** build on the supplied branch (or create one), publish to the supplied PR or open a draft, and return the new commits. See [Pipeline delivery](#pipeline-delivery).
 
 ## 1. Check the input
 
@@ -22,7 +22,9 @@ Require:
 - the approval record: who approved which version, and when
 - the build estimate: difficulty and the recommended model and effort, with any user override
 
-If the input is a rough idea, lacks approval for the submitted version, or has a gap that would change behavior, scope, or acceptance checks, run `clarify-idea` on it first with the reason it needs approval. An approval record that covers the exact submitted version is enough; do not ask again. Continue this run with the spec, approval record, and estimate it returns. `clarify-idea` asks questions only when something is unclear. Do not resolve material gaps here. In pipeline mode, stop with reason `not_approved` instead (see [Pipeline stops](#pipeline-stops)).
+For a saved-spec locator (a `SPEC.md` path or spec issue), first have `prepare-spec` validate the stored text, branch, hash, and grounding commit. A file without a record, or a `Spec:` issue without one, needs approval. Use the validated revision it returns. When Factory instead passes the pinned spec text and its validated record, build from that handoff without reopening the store. A diagnosed fix plan with the caller's diagnosis approval keeps its existing path.
+
+For other input that lacks approval for this version or has a material gap, use `prepare-spec` interactively with the reason it needs approval. In pipeline mode return `not_approved` to the caller (see [Pipeline stops](#pipeline-stops)). Reuse exact approval when it covers the input.
 
 If the input has no build estimate (for example a diagnosed fix plan), rate it yourself with the table in step 2 and include the rating in your result.
 
@@ -42,7 +44,7 @@ Launch the subagent with that model and effort set explicitly on the subagent ca
 
 ## 3. Brief the builder
 
-In pipeline mode, do step 1 of [Pipeline delivery](#pipeline-delivery) first, so the build happens on the new branch.
+In pipeline mode, do step 1 of [Pipeline delivery](#pipeline-delivery) first, so the build happens on the target branch.
 
 Give the subagent a self-contained brief — it does not see this conversation:
 
@@ -50,13 +52,13 @@ Give the subagent a self-contained brief — it does not see this conversation:
 - the relevant files, patterns, and conventions named in the spec
 - how to run tests, lint, and typecheck, and the instruction to run them before finishing
 - for a fix plan with a reproduction: add or copy the reproduction first, run it on the unchanged implementation, and confirm it fails for the diagnosed reason before changing code; after the fix, rerun it and confirm it passes. If it does not fail as diagnosed, stop and report instead of fixing.
-- in pipeline mode, the checkout path and branch to work in
+- in pipeline mode, the checkout path and branch to work in; for Adjust, the existing PR, starting head, and difference between the built spec and the pinned full spec. Implement only that difference. Never stage or commit the working-tree-root `SPEC.md`.
 - constraints: stay within scope, do not commit or push, do not ask the user questions — make the reasonable call and report it
 - what to return: files changed, a summary of the change, any deviations from the spec and why, test results, reproduction results when applicable, and steps to try the feature manually
 
 ## 4. Verify and deliver
 
-When the subagent finishes, verify its claims briefly: look at the diff, confirm the checks and any reproduction ran with the reported results. A deviation that changes behavior, scope, or acceptance checks needs fresh approval of the spec before delivery: in interactive mode, pass the spec and the proposed change to `clarify-idea` for approval and continue with the spec it returns; in pipeline mode, stop with reason `material_deviation`. If the builder reports that the reproduction did not fail as diagnosed, stop with reason `reproduction_mismatch` in pipeline mode, or report it in interactive mode.
+When the subagent finishes, verify its claims briefly: look at the diff, confirm the checks and any reproduction ran with the reported results. A deviation that changes behavior, scope, or acceptance checks needs fresh approval of the spec before delivery: in interactive mode, pass the spec and the proposed change to `prepare-spec` for approval and continue with the spec it returns; in pipeline mode, stop with reason `material_deviation`. If the builder reports that the reproduction did not fail as diagnosed, stop with reason `reproduction_mismatch` in pipeline mode, or report it in interactive mode.
 
 In interactive mode, report concisely:
 
@@ -70,10 +72,10 @@ Keep it short. Don't paste the diff or repeat the spec. Do not commit or push un
 
 ### Pipeline delivery
 
-1. Resolve the target GitHub repository and base branch (the caller's target or the repository default). Create a new branch from that base in a clean checkout. Use an isolated checkout if needed to preserve existing work. Keep the builder's restriction on committing and pushing.
-2. After verifying the build, stage only the approved build changes, commit them, and push the branch. If there is no build to publish, or a required check or publication step fails, return the blocker and the last completed step to the caller.
-3. Open a draft PR against the chosen base using authenticated `gh pr create --draft --base <base> --head <branch> --title <title> --body-file <file>` or the equivalent GitHub MCP operation. Put the approved spec summary first, then the complete approved spec inside `<details>` with a `<summary>Full spec</summary>` and blank lines around the spec. Add any links the caller supplies, such as a diagnosed issue, as the caller directs. Keep local scratch paths out of the PR. Verify the draft PR and its refs. Before retrying PR creation, look up an existing PR for the same head and base.
-4. Return the PR number and URL, repository, base and head branches, build commit, checkout path, approved spec summary and full spec, difficulty, the model and effort that ran, deviations, checks, reproduction results when applicable, and steps to try the build. For direct pipeline requests, return the same result to the user.
+1. Resolve the repository, base, and target branch. For an existing PR use its actual head repository, branch and exact head SHA. For a supplied feature branch with no PR, use that branch. Preserve existing edits and local commits, using an isolated checkout when needed. If no branch was supplied, create a clean feature branch from the requested base or repo default. Record the starting commit before launching the builder.
+2. Verify the build. Stage only its approved changes, check the staged diff, commit and push to the resolved target branch. Never stage or commit the working-tree-root `SPEC.md`, including if already tracked. If an existing PR already implements the entire requested difference, verify the acceptance checks and return its unchanged head and an empty list of new commits. Otherwise return the blocker and last completed step if no build can be published or a required check or publication fails.
+3. For a supplied PR verify its head contains the pushed commits and return it to Factory for review and description updates. Otherwise look for an existing PR for that head and base before creating or retrying. Open a draft with `gh pr create --draft --base <base> --head <branch> --title <title> --body-file <file>` or equivalent. For a saved spec, add a heading `## Spec rev N` followed by the pinned document body (title, summary, then full spec), omitting the hidden record. Preserve the text so Factory can compare it later. Use a collapsed full-spec section for issue specs and preserve the local document's wrapper choice for file specs. Add a standalone `Closes #N` for a spec issue. For directly supplied approved text, including a diagnosed fix plan, put the summary first when available, then the complete spec or plan inside `<details>` with `<summary>Full spec</summary>` and blank lines around the text. Add caller-supplied links as directed. For diagnosed fix plans, link the bug issue without a closing keyword. Keep scratch paths out of the PR and verify the draft and refs.
+4. Return the PR number and URL, repository, base and head branches, starting head and new commit SHAs, checkout path, approved spec summary and full spec, revision when applicable, difficulty, the model and effort that ran, deviations, checks, reproduction results when applicable, and steps to try the build. For direct pipeline requests, return the same result to the user.
 
 ### Pipeline stops
 
