@@ -39,9 +39,41 @@ function skillNames(dir) {
     .sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)));
 }
 
+function readLockContents() {
+  return readFileSync(lock, 'utf8').replace(/^\uFEFF/, '');
+}
+
 function readLock() {
-  const contents = readFileSync(lock, 'utf8').replace(/^\uFEFF/, '');
+  const contents = readLockContents();
   return contents.trim() ? JSON.parse(contents) : null;
+}
+
+function dropLockEntry(name) {
+  const contents = readLockContents();
+  const tokens = /"(?:[^"\\]|\\.)*"|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/gs;
+  const strings = new Set();
+  for (const [token] of contents.matchAll(tokens)) {
+    if (token.startsWith('"')) strings.add(JSON.stringify(JSON.parse(token)));
+  }
+
+  // Parse numbers as temporary strings so precision is preserved on Node 18.
+  // Check decoded strings and keys to avoid collisions with existing lock data.
+  const numbers = new Map();
+  let id = 0;
+  const masked = contents.replace(tokens, (token) => {
+    if (token.startsWith('"')) return token;
+    let placeholder;
+    do {
+      placeholder = JSON.stringify(`lock-number:${id++}`);
+    } while (strings.has(placeholder));
+    numbers.set(placeholder, token);
+    return placeholder;
+  });
+
+  const data = masked.trim() ? JSON.parse(masked) : null;
+  delete data?.skills?.[name];
+  const updated = JSON.stringify(data, null, 2).replace(tokens, (token) => numbers.get(token) ?? token);
+  writeFileSync(lock, `${updated}\n`);
 }
 
 function lockSource(name) {
@@ -85,9 +117,7 @@ function removeCopies() {
     if (dryRun) {
       console.log(`would: drop '${name}' from ${lock}`);
     } else {
-      const data = readLock();
-      delete data?.skills?.[name];
-      writeFileSync(lock, `${JSON.stringify(data, null, 2)}\n`);
+      dropLockEntry(name);
     }
   }
 }
