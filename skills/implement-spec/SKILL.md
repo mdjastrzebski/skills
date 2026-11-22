@@ -30,7 +30,7 @@ If the input has no build estimate (for example a diagnosed fix plan), rate it y
 
 ## 2. Pick the builder
 
-Use the recommended model and effort. A user override wins. A recommendation outside the policy below is capped to strong at high effort unless the user explicitly asked for it; record the change. Without a recommendation, size the build:
+Use the recommended model and effort. A user override wins. A recommendation outside the policy below is capped to strong at high effort unless the user explicitly asked for it, including an override the user approved and recorded in the spec being built, which counts as explicit for this run; record the change. Without a recommendation, size the build:
 
 | Difficulty | Signals | Pick (Claude Code example) |
 | --- | --- | --- |
