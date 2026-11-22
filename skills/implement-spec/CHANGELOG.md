@@ -2,7 +2,7 @@
 
 ## 0.3.0 (2026-11-22)
 
-- Pick the builder from the Haiku, Sonnet, and Opus tiers: Sonnet level for simple and moderate builds, Opus level at high effort for hard ones, never `xhigh` or `max`. A recommendation outside this policy is capped to Opus level at high effort unless you explicitly asked for it, and the builder never inherits the session's model or effort.
+- Pick the builder from the Haiku, Sonnet, and Opus tiers: Sonnet level for simple and moderate builds, Opus level at high effort for hard ones, never `xhigh` or `max`. A recommendation above this policy is capped to Opus level at high effort, and a Haiku-level pick for more than a trivial mechanical edit moves up to Sonnet level, unless you explicitly asked for it; the builder never inherits the session's model or effort.
 - Allow a Haiku-level builder only for a purely mechanical edit with an exact pattern to copy and a check that proves it.
 
 ## 0.2.0 (2026-11-22)
