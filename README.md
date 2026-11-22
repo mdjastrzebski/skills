@@ -139,11 +139,11 @@ Claude Code and Codex sessions opened in this repo, including Codex Cloud, disco
 To use the working copy's skills in other projects, use the global scripts below.
 
 ```bash
-scripts/remove-global-skills.sh   # delete copies installed by `npx skills add` (add --dry-run to preview)
-scripts/link-skills.sh            # link skills/ and skills/legacy/ into ~/.agents/skills and ~/.claude/skills
+scripts/remove-global-skills.mjs   # delete copies installed by `npx skills add` (add --dry-run to preview)
+scripts/link-skills.sh             # link skills/ and skills/legacy/ into ~/.agents/skills and ~/.claude/skills
 ```
 
-Both scripts are idempotent. `remove-global-skills.sh` only touches copies whose lock entry comes from `mdjastrzebski/*`, and it needs `jq`. Run `link-skills.sh` again after adding a skill. The links follow whatever branch is checked out.
+Both scripts are idempotent. `remove-global-skills.mjs` only touches copies whose lock entry comes from `mdjastrzebski/*`. Run `link-skills.sh` again after adding a skill. The links follow whatever branch is checked out.
 
 ## Versioning
 

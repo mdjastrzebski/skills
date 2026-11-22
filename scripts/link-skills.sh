@@ -9,7 +9,7 @@
 # through the first link; Claude Code through the second.
 #
 # A real (copied) folder already installed under a skill's name is left
-# alone. Run scripts/remove-global-skills.sh first to clear those.
+# alone. Run scripts/remove-global-skills.mjs first to clear those.
 #
 # Usage: scripts/link-skills.sh
 # Override targets with AGENTS_SKILLS_DIR and CLAUDE_SKILLS_DIR.
@@ -30,7 +30,7 @@ link() {
     fi
     rm "$path"
   elif [ -e "$path" ]; then
-    echo "skip   $path is a real folder; run scripts/remove-global-skills.sh first" >&2
+    echo "skip   $path is a real folder; run scripts/remove-global-skills.mjs first" >&2
     return 1
   fi
   ln -s "$target" "$path"

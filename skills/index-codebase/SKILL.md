@@ -2,7 +2,7 @@
 name: index-codebase
 description: Use when the user asks to index, map, or document a codebase for agents — build agent docs, an architecture overview, or a knowledge base that later agent sessions can rely on, covering how the code works, how to use and extend it, and how to contribute — or to check, fix, or refresh existing agent docs (`AGENTS.md`, `CLAUDE.md`, `docs/agents/`, editor rule files) after the code changed. Defaults to the whole repository in the current working directory, written to `docs/agents/` and linked from `AGENTS.md`. Not for answering a one-off question about how code works; answer that directly.
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # Index Codebase
@@ -17,7 +17,7 @@ Project-level questions, such as maintenance activity, backing, license, alterna
 
 ```bash
 git rev-parse --short HEAD && git status --short | head
-bash <skill-dir>/scripts/agent_docs.sh list
+node <skill-dir>/scripts/agent_docs.mjs list
 grep -rl 'index-codebase:' docs/agents 2>/dev/null
 ```
 
@@ -124,7 +124,7 @@ Fill the files from the templates in [references/doc-templates.md](references/do
 
 Run these checks on both the generated docs and every hand-written doc you edited.
 
-- Every cited path exists: `bash <skill-dir>/scripts/agent_docs.sh check-paths`. Treat each hit as a lead: hand-written docs often use paths relative to a nested `AGENTS.md`, or illustrative paths. Fix only the ones that really point nowhere.
+- Every cited path exists: `node <skill-dir>/scripts/agent_docs.mjs check-paths`. Treat each hit as a lead: hand-written docs often use paths relative to a nested `AGENTS.md`, or illustrative paths. Fix only the ones that really point nowhere.
 - Every cited symbol exists: check a sample, and all of the `index.md` entries.
 - Run the build and test commands when that's cheap. Otherwise mark them "from CI, not run".
 - Re-read `index.md` as a newcomer. Can it route each "Where to look" row to the right file?
