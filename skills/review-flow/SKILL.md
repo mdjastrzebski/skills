@@ -44,9 +44,10 @@ Pick the reviewer level (first match wins):
 | Probe result | Reviewer |
 | --- | --- |
 | Any hotspot, a hard rating, or "deep review" | strong at high |
+| "Quick review" and no hotspot | standard at medium |
 | Code without a hotspot | strong at medium |
 | Only docs, config, tests, generated or mechanical files, about 100 changed lines or fewer, no hotspot | standard at high |
-| "Quick review" and no hotspot | standard at medium |
+| Anything else (for example, those non-code files over about 100 changed lines) | strong at medium |
 
 A spec or caller rating can only raise the level. "Quick review" never lowers it below the hotspot rule. When unclear, take the higher level.
 
