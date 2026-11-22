@@ -17,6 +17,7 @@
 - Drop the Summary 1 comment: the PR description's summary replaces it, and diagnosis evidence goes in its Reviewer notes. Keep the author's summary during existing PR review and put updated facts and checks in the Final handoff comment.
 - Link review table findings to their inline comments by updating the review body after submission, since GitHub assigns the comment URLs only then.
 - Attribute Codex subagent usage by the launch label stamped after the rollout's own start, so a forked child no longer takes its parent's inherited label.
+- Stop refreshing a PR's `## Summary` at the collapsed block that follows it, so a diagnosed fix's embedded plan stays intact.
 
 ## 0.11.0 (2026-11-22)
 

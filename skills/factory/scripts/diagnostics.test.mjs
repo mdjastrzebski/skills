@@ -138,6 +138,18 @@ test("Codex: a nested child keeps its own label, not the parent's inherited one"
   assert.equal(labels["rollout-worker.jsonl"], "factory:run2:2");
 });
 
+test("refreshing the PR Summary keeps a diagnosed fix's collapsed plan intact", () => {
+  const tail = ["<details>", "<summary>Full spec</summary>", "", "# Fix plan", "", "### Root cause", "", "text", "", "</details>", "",
+    "## Reviewer notes", "", "- None", ""].join("\n");
+  const body = path.join(dir, "diagnosed-pr.md");
+  const summary = path.join(dir, "diagnosed-summary.md");
+  const out = path.join(dir, "diagnosed-refreshed.md");
+  fs.writeFileSync(body, "## Summary\n\n- Initial.\n\n" + tail);
+  fs.writeFileSync(summary, "## Summary\n\n- Final.\n");
+  assert.equal(factory("section", "--body", body, "--heading", "## Summary", "--content", summary, "--out", out).replaced, true);
+  assert.equal(fs.readFileSync(out, "utf8"), "## Summary\n\n- Final.\n\n" + tail);
+});
+
 test("unreadable usage still shows the tree, models and work", () => {
   const usage = path.join(dir, "bad-usage.json");
   fs.writeFileSync(usage, JSON.stringify({ error: "no transcript for this session" }));

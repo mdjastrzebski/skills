@@ -398,6 +398,7 @@ function* markdownLines(bytes) {
       const end = htmlBlockEnd(line);
       if (end) {
         if (!end.test(line)) htmlEnd = end;
+        if (/^ {0,3}<details[\s>]/i.test(line)) yield { line, index, nextIndex, details: true };
         continue;
       }
     }
@@ -514,8 +515,17 @@ function section(options) {
   let end = marks?.lineStart ?? body.length;
   let level;
   let paragraph = null;
-  for (const { line, index, nextIndex, specBuilt } of markdownLines(bytes)) {
+  for (const { line, index, nextIndex, specBuilt, details } of markdownLines(bytes)) {
     if (index >= end) break;
+    if (details) {
+      // A collapsed block after the section (a diagnosed fix's embedded plan) is not part of it.
+      if (start !== null) {
+        end = index;
+        break;
+      }
+      paragraph = null;
+      continue;
+    }
     if (specBuilt) {
       // The build record and any following local spec belong outside the section.
       if (start !== null) {
