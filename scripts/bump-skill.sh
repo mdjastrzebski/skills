@@ -24,6 +24,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "$0")/.." && pwd)"
+source "$repo/scripts/skill-base-path.sh"
 version_re='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
 
 die() { echo "$*" >&2; exit 1; }
@@ -117,9 +118,11 @@ git -C "$repo" rev-parse --verify --quiet "$base^{commit}" >/dev/null \
 base_commit="$(git -C "$repo" merge-base HEAD "$base" 2>/dev/null)" \
   || die "no merge-base between HEAD and '$base'"
 
-base_ver="$( { git -C "$repo" show "$base_commit:skills/$name/SKILL.md" 2>/dev/null \
-  || git -C "$repo" show "$base_commit:skills/legacy/$name/SKILL.md" 2>/dev/null \
-  || true; } | read_version)"
+base_path="$(skill_base_path "$repo" "$base_commit" "${dir#"$repo"/}/SKILL.md")"
+base_ver=""
+if [ -n "$base_path" ]; then
+  base_ver="$(read_version < <(git -C "$repo" show "$base_commit:$base_path"))"
+fi
 [[ "$base_ver" =~ $version_re ]] || base_ver=""
 
 if [ -n "$base_ver" ]; then

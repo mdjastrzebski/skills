@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 (2026-11-22)
+
+- Build on a supplied feature branch or update an existing PR and return the new commits.
+- Validate saved specs through `prepare-spec` and keep `SPEC.md` out of all build commits.
+- Include the revision-labelled spec in the draft PR and link a spec issue with `Closes #N`.
+
 ## 0.1.0 (2026-11-21)
 
 - Initial release.
