@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.13.0 (2026-11-22)
+
+- Hand fix recovery to `fix-issues`: each review round passes its recovery file as that skill's `state FILE` and verifies the round's commits through its procedure.
+
 ## 0.12.0 (2026-11-22)
 
 - Read only a spec issue's title and record line, and pass pinned spec files by path between agents.

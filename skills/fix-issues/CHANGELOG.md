@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0 (2026-11-22)
+
+- Own saved-state recovery: a caller passes `state FILE` and this skill records each item, commit and correction atomically there, verifies its commits, and resumes an interrupted run after checking the saved checkout, tip and commits. Works without any other skill installed, using a caller-supplied helper when given and plain git otherwise.
+- Describe `preserve IDs`, auto mode and supplied findings lists as generic caller options instead of Factory-specific ones.
+
 ## 0.8.0 (2026-11-22)
 
 - Accept an inline modifier that verifies and fixes issues in one context.
