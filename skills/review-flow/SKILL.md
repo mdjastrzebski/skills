@@ -74,8 +74,8 @@ Record one probe line for the findings header and the review body, for example `
 
 1. Dirty working tree: print the findings first. If the uncommitted changes are part of the reviewed diff (a local target), ask once whether to commit them (in the repo's commit style) and continue to fix, or stop; after that commit, it is the reviewed head. Otherwise (a PR or branch target) the tree must be clean before switching branches: report the blocker and stop. Never commit or stash without that yes.
 2. Make sure the checkout is on the target branch at the reviewed head (for a PR, its head branch; after the step 1 commit, that commit). If that cannot be done safely, report the findings and the blocker, then stop.
-3. Run `fix-issues` with `auto` passed explicitly as its mode, round `1`, as a pasted-list run. Pass every finding with its #ID, rating, and pre-existing tag. Its rules apply unchanged: `important` findings are dispatched, low-severity improvements may be deferred, pre-existing findings become follow-ups. It commits one fix per issue and does not push or reply.
-4. Map its verdict table back to the #IDs (by the order and text you passed).
+3. Run `fix-issues` with `auto` passed explicitly as its mode, round `1`, as a pasted-list run. Pass every finding with its #ID, rating, and pre-existing tag, and start each finding's text with its review #ID (for example `Review #3: ...`), since `fix-issues` numbers its own list from #1. Its rules apply unchanged: `important` findings are dispatched, low-severity improvements may be deferred, pre-existing findings become follow-ups. It commits one fix per issue and does not push or reply.
+4. Map its verdict table back to the review #IDs by the `Review #N` prefix in each row's issue text, not by `fix-issues`' own #IDs or the row order (its summary is in triage order).
 5. PR (target or recorded for the local or branch target): push the branch, then post one `COMMENT` review (see Publishing). No PR: print the outcome summary in chat.
 
 **Ask mode (someone else's PR).**
@@ -99,7 +99,7 @@ Record one probe line for the findings header and the review body, for example `
 3. If the fix set is not empty:
    - If the working tree is dirty, skip the fixes: report the blocker, never commit or stash it, and continue with the comment set only.
    - Prepare a local branch at the PR head SHA (for example `git fetch origin pull/<N>/head:review/pr-<N>`, then check it out). If it does not match the reviewed SHA, stop and report the blocker.
-   - Run `fix-issues` with `auto` passed explicitly as its mode, round `1`, as a pasted-list run with the fix set only. Pass each item rated `important` and not tagged pre-existing, so the user's explicit pick overrides its defer and follow-up rules. Keep the original rating in the review's own records.
+   - Run `fix-issues` with `auto` passed explicitly as its mode, round `1`, as a pasted-list run with the fix set only. Pass each item rated `important` and not tagged pre-existing, so the user's explicit pick overrides its defer and follow-up rules. Start each item's text with its review #ID (for example `Review #5: ...`) and map the verdict table back by that prefix, not by `fix-issues`' own #IDs or row order. Keep the original rating in the review's own records.
    - If commits were made, ask once: "Push N commits to <head-owner>:<branch>?" Push only on an explicit yes, and only where GitHub allows it (a fork PR with maintainer edits allowed, or a same-repo branch the user can write to). Otherwise keep the commits local, name the local branch, and describe the changes in the review.
 4. If the fix and comment sets are both empty, report in chat and post nothing. Otherwise post one `COMMENT` review (see Publishing).
 
