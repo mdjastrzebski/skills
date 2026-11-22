@@ -117,10 +117,20 @@ test("unreadable usage still shows the tree, models and work", () => {
   fs.writeFileSync(usage, JSON.stringify({ error: "no transcript for this session" }));
   const checkpoint = path.join(dir, "bad-checkpoint.json");
   log(checkpoint, "Review Round 1");
+  factory("checkpoint", "set", "--file", checkpoint, "root_model", JSON.stringify("terra"));
   const { result, block } = diagnostics(usage, checkpoint, "flat");
   assert.equal(result.available, false);
   assert.match(block, /- Usage: N\/A \(no transcript for this session\)/);
+  assert.match(block, /\| 1 \| Orchestrator \| — \| terra · — \|/);
   assert.match(block, /\| 3 \| Reviewer \| 2 \| opus · high \| 3 findings \(F1-F3\) \| N\/A \| N\/A \|/);
+});
+
+test("stage close retains the recorded root model without usage", () => {
+  const checkpoint = path.join(dir, "stage-root.json");
+  fs.writeFileSync(checkpoint, JSON.stringify({ root_model: "terra", execution_mode: "inline" }));
+  factory("stage", "open", "--file", checkpoint, "--stage", "Build");
+  const closed = factory("stage", "close", "--file", checkpoint, "--stage", "Build");
+  assert.match(fs.readFileSync(closed.diagnostics, "utf8"), /\| 1 \| Orchestrator \| — \| terra · — \|/);
 });
 
 test("inline mode and unlogged stages", () => {

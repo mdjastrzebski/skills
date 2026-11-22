@@ -5,6 +5,7 @@
 - Read only a spec issue's title and record line, and pass pinned spec files by path between agents.
 - Match PRs by their `spec-built` block, take Adjust's previous revision from the issue's superseded-revision comment, and refresh the PR description's implementation summary at handoff.
 - Rename review rounds to "Review Round N" and post them as labelled bullets plus a Finding, Severity, Difficulty, Verdict and Commit table with linkable SHAs.
+- Show the recorded orchestrator model when transcript usage is unavailable.
 - Log every subagent launch with a label and show, in each Diagnostics block, the agent tree with models, effort, work, tokens and cost, using `N/A` where usage or prices are missing.
 - Pass owners their agent ID, run ID and an agent-log path so their workers are logged, record what the orchestrator did in each stage, and recheck the spec store at handoff with `pin`.
 - Move Where to look first, Deferred, Follow-ups and Open questions from the Final handoff comment to a `## Reviewer notes` section at the end of the PR description, and replace the handoff's verdict table with one line per Review Round.

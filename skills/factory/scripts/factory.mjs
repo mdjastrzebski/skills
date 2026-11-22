@@ -193,7 +193,7 @@ function ranModel(requested, models) {
   return `${ran} (asked ${requested})`;
 }
 
-function diagnosticsBlock(stage, files, { agents = null, mode = null, work = null } = {}) {
+function diagnosticsBlock(stage, files, { agents = null, mode = null, work = null, rootModel = null } = {}) {
   const logged = agentRows(agents, stage);
   let reports;
   let failure = null;
@@ -207,7 +207,7 @@ function diagnosticsBlock(stage, files, { agents = null, mode = null, work = nul
     }
   } catch (error) {
     if (!(error instanceof UsageError)) throw error;
-    if (!logged.length && !mode) return unavailable(error.message);
+    if (!logged.length && !mode && !rootModel) return unavailable(error.message);
     failure = error.message;
     reports = [];
   }
@@ -253,7 +253,7 @@ function diagnosticsBlock(stage, files, { agents = null, mode = null, work = nul
   const modelsOf = (parts) => [...new Set(parts.flatMap((part) => Object.keys(part.models ?? {})))].sort();
   const number = new Map(logged.map((agent, index) => [agent.id, index + 2]));
   const rows = [
-    ["1", "Orchestrator", "—", `${markdownCell(ranModel(null, modelsOf(main)))} · —`, isText(work) ? markdownCell(work) : "—", ...usageCells(main)],
+    ["1", "Orchestrator", "—", `${markdownCell(modelsOf(main).join(", ") || rootModel || "unknown")} · —`, isText(work) ? markdownCell(work) : "—", ...usageCells(main)],
     ...logged.map((agent, index) => {
       const parts = byLabel.get(agent.label) ?? [];
       const effort = isText(agent.requested_effort) ? agent.requested_effort : "—";
@@ -720,7 +720,7 @@ function stage(action, argv) {
       session_id: options["session-id"] ?? data.run?.session_id ?? null }];
     const { block, ...summary } = diagnosticsBlock(name, allParts.map((part) => part.usage),
       { agents: data.agents ?? null, mode: isText(data.execution_mode) ? data.execution_mode : null,
-        work: options.work ?? current.work ?? null });
+        work: options.work ?? current.work ?? null, rootModel: isText(data.root_model) ? data.root_model : null });
     writeAtomic(diagnostics, block);
     result = { start, end, usage, diagnostics, ...summary, ...(options.work ?? current.work ? { work: options.work ?? current.work } : {}) };
     if (splitting || parts.length) Object.assign(result, { parts: allParts, split_pending: splitting });
@@ -854,11 +854,13 @@ function main(argv) {
   const { options } = parseArgs(args, flags[command]);
   if (command === "diagnostics") {
     let agents = null;
+    let rootModel = null;
     if (options.agents) {
       const loaded = readJson(options.agents);
       agents = Array.isArray(loaded) ? loaded : loaded?.agents ?? null;
+      rootModel = isText(loaded?.root_model) ? loaded.root_model : null;
     }
-    const { block, ...result } = diagnosticsBlock(options.stage, options.usage, { agents, mode: options.mode ?? null, work: options.work ?? null });
+    const { block, ...result } = diagnosticsBlock(options.stage, options.usage, { agents, mode: options.mode ?? null, work: options.work ?? null, rootModel });
     fs.writeFileSync(options.out, block);
     return result;
   }
