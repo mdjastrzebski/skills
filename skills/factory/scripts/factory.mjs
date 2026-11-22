@@ -355,15 +355,17 @@ function section(options) {
 }
 
 function diffPath(value) {
-  if (value === "/dev/null") return null;
-  if (!value.startsWith('"')) return value.replace(/^b\//, "").replace(/\t$/, "");
-  requireInput(value.endsWith('"'), "invalid quoted path in diff");
-  const escapes = { a: "\x07", b: "\b", t: "\t", n: "\n", v: "\x0b", f: "\f", r: "\r", '"': '"', "\\": "\\" };
-  const bytes = value.slice(1, -1).replace(/\\([0-7]{3}|.)/g, (_, escaped) => {
-    if (escaped.length === 3) return String.fromCharCode(Number.parseInt(escaped, 8));
-    requireInput(has(escapes, escaped), "invalid path escape in diff");
-    return escapes[escaped];
-  });
+  let bytes = value.replace(/\t$/, "");
+  if (bytes === "/dev/null") return null;
+  if (bytes.startsWith('"')) {
+    requireInput(bytes.endsWith('"'), "invalid quoted path in diff");
+    const escapes = { a: "\x07", b: "\b", t: "\t", n: "\n", v: "\x0b", f: "\f", r: "\r", '"': '"', "\\": "\\" };
+    bytes = bytes.slice(1, -1).replace(/\\([0-7]{3}|.)/g, (_, escaped) => {
+      if (escaped.length === 3) return String.fromCharCode(Number.parseInt(escaped, 8));
+      requireInput(has(escapes, escaped), "invalid path escape in diff");
+      return escapes[escaped];
+    });
+  }
   return Buffer.from(bytes, "latin1").toString("utf8").replace(/^b\//, "");
 }
 
@@ -405,7 +407,8 @@ function review(options) {
   requireInput(/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/i.test(options.commit), "--commit must be a full commit SHA");
   const comments = readJson(options.comments);
   requireInput(Array.isArray(comments), "review comments must be a JSON array");
-  const anchors = rightLines(read(options.diff).toString("utf8"));
+  // Git may mix literal UTF-8 bytes and octal escapes in quoted paths. Decode after unquoting.
+  const anchors = rightLines(read(options.diff).toString("latin1"));
   let body = read(options.body).toString("utf8");
   const inline = [];
   const moved = [];
