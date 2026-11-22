@@ -8,6 +8,7 @@
 - Log every subagent launch with a label and show, in each Diagnostics block, the agent tree with models, effort, work, tokens and cost, using `N/A` where usage or prices are missing.
 - Pass owners their agent ID, run ID and an agent-log path so their workers are logged, record what the orchestrator did in each stage, and recheck the spec store at handoff with `pin`.
 - Move Where to look first, Deferred, Follow-ups and Open questions from the Final handoff comment to a `## Reviewer notes` section at the end of the PR description, and replace the handoff's verdict table with one line per Review Round.
+- Write finding IDs on GitHub as `F1` instead of `#1`, which GitHub links to issues.
 
 ## 0.11.0 (2026-11-22)
 

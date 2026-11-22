@@ -37,10 +37,10 @@ function log(file, stage) {
   const owner = path.join(dir, `owner-${path.basename(file)}`);
   factory("agent", "add", "--file", owner, "--stage", stage, "--id", "2", "--parent", "1", "--role", "Reviewer",
     "--model", "opus", "--effort", "high", "--run", "run1");
-  factory("agent", "done", "--file", owner, "--id", "2", "--work", "3 findings (#1-#3)");
+  factory("agent", "done", "--file", owner, "--id", "2", "--work", "3 findings (F1-F3)");
   factory("agent", "add", "--file", owner, "--stage", stage, "--id", "3", "--parent", "1", "--role", "verify-and-fix",
     "--model", "opus", "--effort", "high", "--run", "run1");
-  factory("agent", "done", "--file", owner, "--id", "3", "--work", "#1 VALID abc1234", "--stopped");
+  factory("agent", "done", "--file", owner, "--id", "3", "--work", "F1 VALID abc1234", "--stopped");
   factory("agent", "done", "--file", file, "--id", "1", "--work", "round procedure");
   assert.equal(factory("agent", "merge", "--file", file, "--from", owner).added, 2);
 }
@@ -80,7 +80,7 @@ test("Claude Code: agents matched by meta.json label, unlabeled usage unattribut
   assert.match(block, /\| 1 \| Orchestrator \| — \| claude-sonnet-5-5 · — \| preflight, publish review \| 1k \|/);
   assert.match(block, /\| 2 \| Review owner \| 1 \| claude-sonnet-5-5 · medium \| round procedure \| 2k \|/);
   assert.match(block, /\| 3 \| Reviewer \| 2 \| claude-sonnet-5-5 \(asked opus\) · high \| 3 findings/);
-  assert.match(block, /\| 4 \| verify-and-fix \| 2 \| claude-opus-5-5 · high \| stopped: #1 VALID abc1234 \|/);
+  assert.match(block, /\| 4 \| verify-and-fix \| 2 \| claude-opus-5-5 · high \| stopped: F1 VALID abc1234 \|/);
   assert.match(block, /\|  \| Unattributed \|  \| claude-haiku-5-5 \|/);
   assert.match(block, /\*\*Total\*\* \|  \|  \|  \| \*\*11k\*\*/);
 });
@@ -120,7 +120,7 @@ test("unreadable usage still shows the tree, models and work", () => {
   const { result, block } = diagnostics(usage, checkpoint, "flat");
   assert.equal(result.available, false);
   assert.match(block, /- Usage: N\/A \(no transcript for this session\)/);
-  assert.match(block, /\| 3 \| Reviewer \| 2 \| opus · high \| 3 findings \(#1-#3\) \| N\/A \| N\/A \|/);
+  assert.match(block, /\| 3 \| Reviewer \| 2 \| opus · high \| 3 findings \(F1-F3\) \| N\/A \| N\/A \|/);
 });
 
 test("inline mode and unlogged stages", () => {
