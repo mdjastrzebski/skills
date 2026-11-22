@@ -40,7 +40,7 @@ function skillNames(dir) {
 }
 
 function readLock() {
-  const contents = readFileSync(lock, 'utf8');
+  const contents = readFileSync(lock, 'utf8').replace(/^\uFEFF/, '');
   return contents.trim() ? JSON.parse(contents) : null;
 }
 
