@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.12.0 (2026-11-22)
+
+- Read only a spec issue's title and record line, and pass pinned spec files by path between agents.
+- Match PRs by their `spec-built` block, take Adjust's previous revision from the issue's superseded-revision comment, and refresh the PR description's implementation summary at handoff.
+- Rename review rounds to "Review Round N" and post them as labelled bullets plus a Finding, Severity, Difficulty, Verdict and Commit table with linkable SHAs.
+- Log every subagent launch with a label and show, in each Diagnostics block, the agent tree with models, effort, work, tokens and cost, using `N/A` where usage or prices are missing.
+
 ## 0.11.0 (2026-11-22)
 
 - Use stage owners when the harness supports nested subagents, with automatic flat and inline fallbacks.

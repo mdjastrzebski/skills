@@ -2,7 +2,7 @@
 name: implement-spec
 description: Use when the user asks to build a spec or fix plan, or when `prepare-spec` or Factory hands off an approved spec to build. Runs the build in a subagent sized to the spec's difficulty. Interactive by default; use pipeline mode when Factory invokes the skill or the user explicitly requests a draft PR. Input that is not an approved spec goes through `prepare-spec` first.
 metadata:
-  version: "0.3.0"
+  version: "0.4.0"
 ---
 
 # Implement Spec
@@ -18,9 +18,9 @@ Build an approved spec in a subagent of the right model and reasoning effort, ve
 
 Require:
 
-- the approved full spec, and its summary when one exists
+- the approved full spec, and its summary when one exists, either as text or as a pinned set from `prepare-spec` (`full-spec.md` with its hash from `record.json`, `document.md`, and the parsed `meta`). For a pinned set, check the `full-spec.md` hash (for example with `sha256sum`) before briefing; a mismatch is `not_approved`. Do not read the pinned text into this agent beyond what the steps below need.
 - the approval record: who approved which version, and when
-- the build estimate: difficulty and the recommended model and effort, with any user override
+- the build estimate: difficulty and the recommended model and effort, with any user override (for a pinned set, `meta.difficulty`, `meta.builder_model`/`meta.builder_effort` and `meta.override`)
 
 For a saved-spec locator (a `SPEC.md` path or spec issue), first have `prepare-spec` validate the stored text, branch, hash, and grounding commit. A file without a record, or a `Spec:` issue without one, needs approval. Use the validated revision it returns. When Factory instead passes the pinned spec text and its validated record, build from that handoff without reopening the store. A diagnosed fix plan with the caller's diagnosis approval keeps its existing path.
 
@@ -50,7 +50,7 @@ In pipeline mode, do step 1 of [Pipeline delivery](#pipeline-delivery) first, so
 
 Give the subagent a self-contained brief — it does not see this conversation:
 
-- the approved full spec, verbatim
+- the approved full spec: for a pinned set, its path and hash with "Read this file in full before starting; it is the approved full spec", never a pasted copy; otherwise the text, verbatim
 - the relevant files, patterns, and conventions named in the spec
 - how to run tests, lint, and typecheck, and the instruction to run them before finishing
 - for a fix plan with a reproduction: add or copy the reproduction first, run it on the unchanged implementation, and confirm it fails for the diagnosed reason before changing code; after the fix, rerun it and confirm it passes. If it does not fail as diagnosed, stop and report instead of fixing.
@@ -76,8 +76,34 @@ Keep it short. Don't paste the diff or repeat the spec. Do not commit or push un
 
 1. Resolve the repository, base, and target branch. For an existing PR use its actual head repository, branch and exact head SHA. For a supplied feature branch with no PR, use that branch. Preserve existing edits and local commits, using an isolated checkout when needed. If no branch was supplied, create a clean feature branch from the requested base or repo default. Record the starting commit before launching the builder.
 2. Verify the build. Stage only its approved changes, check the staged diff, commit and push to the resolved target branch. Never stage or commit the working-tree-root `SPEC.md`, including if already tracked. If an existing PR already implements the entire requested difference, verify the acceptance checks and return its unchanged head and an empty list of new commits. Otherwise return the blocker and last completed step if no build can be published or a required check or publication fails.
-3. For a supplied PR verify its head contains the pushed commits and return it to Factory for review and description updates. Otherwise look for an existing PR for that head and base before creating or retrying. Open a draft with `gh pr create --draft --base <base> --head <branch> --title <title> --body-file <file>` or equivalent. For a saved spec, add a heading `## Spec rev N` followed by the pinned document body (title, summary, then full spec), omitting the hidden record. Preserve the text so Factory can compare it later. Use a collapsed full-spec section for issue specs and preserve the local document's wrapper choice for file specs. Add a standalone `Closes #N` for a spec issue. For directly supplied approved text, including a diagnosed fix plan, put the summary first when available, then the complete spec or plan inside `<details>` with `<summary>Full spec</summary>` and blank lines around the text. Add caller-supplied links as directed. For diagnosed fix plans, link the bug issue without a closing keyword. Keep scratch paths out of the PR and verify the draft and refs.
-4. Return the PR number and URL, repository, base and head branches, starting head and new commit SHAs, checkout path, approved spec summary and full spec, revision when applicable, difficulty, the model and effort that ran, deviations, checks, reproduction results when applicable, and steps to try the build. For direct pipeline requests, return the same result to the user.
+3. For a supplied PR verify its head contains the pushed commits and return it to Factory for review and description updates. Otherwise look for an existing PR for that head and base before creating or retrying. Open a draft with `gh pr create --draft --base <base> --head <branch> --title <title> --body-file <file>` or equivalent. For a saved spec, write the description in the [saved-spec layout](#saved-spec-pr-description). For directly supplied approved text, including a diagnosed fix plan, put the summary first when available, then the complete spec or plan inside `<details>` with `<summary>Full spec</summary>` and blank lines around the text. Add caller-supplied links as directed. For diagnosed fix plans, link the bug issue without a closing keyword. Keep scratch paths out of the PR and verify the draft and refs.
+4. Return the PR number and URL, repository, base and head branches, starting head and new commit SHAs, checkout path, the pinned file paths (or the approved spec summary and full spec when given as text), revision when applicable, difficulty, the model and effort that ran, deviations, checks, reproduction results when applicable, and steps to try the build. For direct pipeline requests, return the same result to the user.
+
+### Saved-spec PR description
+
+The spec issue is the spec's home, so the PR does not repeat it. Write, in this order:
+
+````markdown
+## Summary
+
+- <what changed, two to five bullets with key files>
+
+**Try it:** <shortest steps>
+**Checks:** <tests, lint, typecheck, reproduction, with results>
+
+Closes #42
+
+```spec-built
+issue: #42
+revision: 2
+spec_sha256: <spec_sha256 from record.json>
+```
+````
+
+- Take the summary from the builder's return. Fill `Closes #N` and the `spec-built` block from `record.json` with the shell, never by retyping the hash.
+- For a local `SPEC.md`, omit `Closes #N`, write `source: SPEC.md` and `branch: <name>` in place of `issue:`, and after the block append `<details>`, `<summary>Spec</summary>`, a blank line, the exact `document.md` (`cat` it), a blank line, and `</details>`. The file is never committed, so the PR holds its only copy on GitHub.
+- Never add a `## Spec rev N` heading.
+- Before opening the draft, run `node PREPARE_SPEC_DIR/scripts/spec-record.mjs built FILE` on the body file (`PREPARE_SPEC_DIR` is the loaded `prepare-spec` skill's directory) and require `ok` with the pinned revision and hash.
 
 ### Pipeline stops
 
