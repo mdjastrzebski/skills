@@ -82,7 +82,7 @@ Record one probe line for the findings header and the review body, for example `
 
 **Ask mode (someone else's PR).**
 
-1. Print the numbered findings, a short facts block, and the question. Do not propose a split or mark recommendations.
+1. Check the working tree first. Print the numbered findings, a short facts block, and the question. Do not propose a split or mark recommendations. If the tree is dirty, the facts block says fixing is blocked by uncommitted changes and the question offers only comment and drop.
 
    ```text
    Review of <owner>/<repo>#<N> @ <short sha> — 5 findings (3 important, 1 nit, 1 pre-existing)
@@ -97,22 +97,24 @@ Record one probe line for the findings header and the review body, for example `
    What should I do? e.g. "fix 1 2; comment 3 5". Anything not listed is dropped.
    ```
 
+   Dirty tree: replace the fixing lines with "Fixing is blocked: the working tree has uncommitted changes." and the example with `"comment 3 5"`.
+
 2. Parse the reply into a fix set, a comment set, and dropped items. Accept "fix all", "comment all", and "drop all". If the reply is ambiguous or names unknown IDs, ask once to clarify. An item in both sets is fixed and also commented.
 3. If the fix set is not empty:
-   - If the working tree is dirty, skip the fixes: report the blocker, never commit or stash it, and continue with the comment set only.
+   - If the working tree is dirty (checked before the prompt, and again here), do not fix: report the blocker, never commit or stash it, and treat every fix-set item as unfixed.
    - Prepare a local branch at the PR head SHA (for example `git fetch origin pull/<N>/head:review/pr-<N>`, then check it out). If it does not match the reviewed SHA, stop and report the blocker.
    - Run `fix-issues` with `auto` passed explicitly as its mode, round `1`, as a pasted-list run with the fix set only. Pass each item rated `important` and not tagged pre-existing, so the user's explicit pick overrides its defer and follow-up rules. Start each item's text with its review #ID (for example `Review #5: ...`) and map the verdict table back by that prefix, not by `fix-issues`' own #IDs or row order. Keep the original rating in the review's own records.
    - If commits were made, ask once: "Push N commits to <head-owner>:<branch>?" Push only on an explicit yes, and only where GitHub allows it (a fork PR with maintainer edits allowed, or a same-repo branch the user can write to). Otherwise keep the commits local, name the local branch, and describe the changes in the review.
-4. If the fix and comment sets are both empty, report in chat and post nothing. Otherwise post one `COMMENT` review (see Publishing).
+4. Post one `COMMENT` review (see Publishing) only when the comment set is not empty or fix commits were made. Otherwise report in chat and post nothing. List every fix-set item left unfixed in the outcomes (`not fixed: <reason>`, such as the dirty tree or a `fix-issues` verdict), in the review or in chat.
 
-**Fix all.** On your code, run Fix mode. On someone else's PR, print the numbered findings and the facts block from Ask mode (without the question), then run Ask mode step 3 with every finding in the fix set, each passed as `important` and not pre-existing. Keep the push question. Then post per Ask mode step 4.
+**Fix all.** On your code, run Fix mode. On someone else's PR, check the working tree, print the numbered findings and the facts block from Ask mode (without the question), then run Ask mode step 3 with every finding in the fix set, each passed as `important` and not pre-existing. Keep the push question. Then act per Ask mode step 4, so a dirty tree reports the blocker and every finding as not fixed in chat and posts nothing.
 
 **Comment all.** Treat every finding as commented, run no fixes, then publish.
 
 ## 5. Publishing
 
 - Post one GitHub review with event `COMMENT`. Set its commit ID (`commit_id` in the REST API) to the reviewed head SHA when supported.
-- The body has the reviewed SHA and comparison, the guidance file used, and the probe line; a short check summary from `fix-issues` if fixes ran; and an outcomes list keyed by #ID: `Fixed in <sha>` (pushed), fixed locally on `<branch>` and not pushed (with a one-line description), or the `fix-issues` verdict and reason, deferred, or follow-up.
+- The body has the reviewed SHA and comparison, the guidance file used, and the probe line; a short check summary from `fix-issues` if fixes ran; and an outcomes list keyed by #ID: `Fixed in <sha>` (pushed), fixed locally on `<branch>` and not pushed (with a one-line description), the `fix-issues` verdict and reason, deferred, follow-up, or not fixed with the reason.
 - Anchor commented findings inline on the reviewed diff where possible, each prefixed with its #ID and written as the issue and impact in one or two plain sentences. Put a finding in the review body when there is no usable inline position or GitHub rejects its anchor.
 - Cite a fix commit only after its push succeeds.
 - Verify the review was posted, and report its link in chat with the outcome summary.
