@@ -589,14 +589,15 @@ function ownLaunchLabel(text) {
     let rec;
     try { rec = JSON.parse(line); } catch { rec = null; }
     if (rec && rec.type === "session_meta" && start === null) {
-      const t = Date.parse(rec.payload && rec.payload.timestamp);
+      const t = Date.parse((rec.payload && rec.payload.timestamp) ?? rec.timestamp);
       if (!Number.isNaN(t)) start = t;
       continue;
     }
     const label = LABEL.exec(line)?.[0];
-    if (!label) { if (++lines > 200 && start === null) return null; continue; }
     const at = Date.parse(rec && rec.timestamp);
-    if (start !== null && !Number.isNaN(at) && at < start) continue;
+    const inherited = start !== null && !Number.isNaN(at) && at < start;
+    if (!inherited && ++lines > 200) return null; // the launch message opens the child's own records
+    if (!label || inherited) continue;
     return label;
   }
   return null;
