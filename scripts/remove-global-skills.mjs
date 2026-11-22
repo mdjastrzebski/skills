@@ -40,7 +40,14 @@ function skillNames(dir) {
 }
 
 function readLockContents() {
-  return readFileSync(lock, 'utf8').replace(/^\uFEFF/, '');
+  let contents;
+  try {
+    contents = readFileSync(lock, 'utf8');
+  } catch (error) {
+    error.exitCode = 2;
+    throw error;
+  }
+  return contents.replace(/^\uFEFF/, '');
 }
 
 function readLock() {
@@ -126,5 +133,5 @@ try {
   removeCopies();
 } catch (error) {
   console.error(error.message);
-  process.exitCode = error instanceof SyntaxError ? 5 : 1;
+  process.exitCode = error.exitCode ?? (error instanceof SyntaxError ? 5 : 1);
 }
