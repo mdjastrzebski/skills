@@ -230,7 +230,7 @@ function* markdownLines(bytes) {
     if (fenceLine) {
       if (!fence) fence = fenceLine[1];
       else if (fence[0] === fenceLine[1][0] && fenceLine[1].length >= fence.length && !fenceLine[2].trim()) fence = null;
-    } else if (!fence) yield { line, index };
+    } else if (!fence) yield { line, index, nextIndex: index + raw.length + 1 };
   }
 }
 
@@ -307,27 +307,43 @@ function section(options) {
   const eol = bytes.includes("\r\n") ? "\r\n" : "\n";
   const marks = bodyMarkers(bytes);
   const atxHeading = (line) => /^ {0,3}(#{1,6})[ \t]+(.+?)\s*$/.exec(line);
+  const blockLine = /^ {0,3}(?:[><]|(?:[*+-]|\d+[.)])(?:[ \t]|$)|(?:[ \t]*[*_-]){3,}[ \t]*$)/;
   requireInput(!/[\r\n]/.test(options.heading), "--heading must be one line");
-  const heading = atxHeading(options.heading);
-  const headingLevel = heading?.[1].length;
-  const title = Buffer.from((heading?.[2] ?? options.heading).trim().replace(/[ \t]+#+$/, "")).toString("latin1");
+  const atxTitle = (match) => match[2].replace(/[ \t]+#+$/, "");
+  const requested = atxHeading(options.heading);
+  const headingLevel = requested?.[1].length;
+  const title = Buffer.from(requested ? atxTitle(requested) : options.heading.trim()).toString("latin1");
   let start = null;
   let end = marks?.lineStart ?? body.length;
   let level;
-  for (const { line, index } of markdownLines(bytes)) {
+  let paragraph = null;
+  for (const { line, index, nextIndex } of markdownLines(bytes)) {
     if (index >= end) break;
+    if (paragraph?.nextIndex !== index) paragraph = null;
     const atx = atxHeading(line);
+    const underline = /^ {0,3}(=+|-+)[ \t]*$/.exec(line);
+    const setext = underline && paragraph;
+    const closes = /^\s*Closes #\d+\s*$/i.test(line);
+    const currentLevel = atx ? atx[1].length : setext ? (underline[1][0] === "=" ? 1 : 2) : 0;
+    const headingStart = setext ? paragraph.index : index;
     if (start !== null) {
-      if ((atx && atx[1].length <= level) || /^\s*Closes #\d+\s*$/i.test(line)) {
-        end = index;
+      if ((currentLevel && currentLevel <= level) || closes) {
+        end = headingStart;
         break;
       }
-    } else if (atx && (!headingLevel || atx[1].length === headingLevel)) {
-      const candidate = atx[2].replace(/[ \t]+#+$/, "");
+    } else if (currentLevel && (!headingLevel || currentLevel === headingLevel)) {
+      const candidate = atx ? atxTitle(atx) : paragraph.title;
       if (options["match-prefix"] ? candidate.startsWith(title) : candidate === title) {
-        start = index;
-        level = atx[1].length;
+        start = headingStart;
+        level = currentLevel;
       }
+    }
+    // A Setext underline belongs to a preceding paragraph, not a blank or block line.
+    if (!line.trim() || atx || underline || closes || /^(?: {4}|\t)/.test(line) || blockLine.test(line)) {
+      paragraph = null;
+    } else {
+      const text = line.trim();
+      paragraph = { index: paragraph?.index ?? index, nextIndex, title: paragraph ? `${paragraph.title} ${text}` : text };
     }
   }
   const content = read(options.content);
