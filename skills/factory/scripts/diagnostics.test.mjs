@@ -3,6 +3,7 @@
 //   node scripts/diagnostics.test.mjs
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -187,4 +188,30 @@ test("PR description Diagnostics replaces the Evidence trail and rewrites in pla
   const withNotes = path.join(dir, "pr-with-notes.md");
   factory("section", "--body", twice, "--heading", "## Reviewer notes", "--content", notes, "--out", withNotes);
   assert.match(fs.readFileSync(withNotes, "utf8"), /## Reviewer notes[\s\S]*<!-- factory-diagnostics:start -->/);
+});
+
+test("refreshing the PR Summary preserves the local spec build record and document", () => {
+  const document = "# Spec: Café\n\n## Summary\n\nApproved plan.\n\n## Full spec\n\nImplement it.\n";
+  const hash = createHash("sha256").update(document).digest("hex");
+  const tail = [
+    "```spec-built", "source: SPEC.md", "branch: feature", "revision: 2", `spec_sha256: ${hash}`, "```", "",
+    "<details>", "<summary>Spec</summary>", "", document, "</details>", "",
+    "## Reviewer notes", "", "- **Deferred:** None", "",
+    "<!-- factory-diagnostics:start -->", "<details><summary>Diagnostics</summary>", "", "</details>",
+    "<!-- factory-diagnostics:end -->", "",
+  ].join("\n").replaceAll("\n", "\r\n");
+  const body = path.join(dir, "local-spec-pr.md");
+  const summary = path.join(dir, "refreshed-summary.md");
+  const out = path.join(dir, "local-spec-refreshed.md");
+  const replacement = "## Summary\r\n\r\n- Final implementation.\r\n";
+  fs.writeFileSync(body, "## Summary\r\n\r\n- Initial café implementation.\r\n\r\n~~~~md\r\n```spec-built\r\n```\r\n~~~~\r\n\r\n" + tail);
+  fs.writeFileSync(summary, replacement);
+  const built = (file) => JSON.parse(node("../../prepare-spec/scripts/spec-record.mjs", ["built", file]));
+  const original = built(body);
+  assert.equal(original.status, "ok");
+
+  assert.equal(factory("section", "--body", body, "--heading", "## Summary", "--content", summary, "--out", out).replaced, true);
+
+  assert.deepEqual(built(out), original);
+  assert.equal(fs.readFileSync(out, "utf8"), replacement + "\r\n" + tail);
 });

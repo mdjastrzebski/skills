@@ -377,14 +377,19 @@ function* markdownLines(bytes) {
   let htmlEnd = null;
   for (const { 0: raw, index } of bytes.matchAll(/[^\n]*\n|[^\n]+$/g)) {
     const line = raw.replace(/\r?\n$|\r$/, "");
+    const nextIndex = index + raw.length;
     if (htmlEnd) {
       if (htmlEnd.test(line)) htmlEnd = null;
       continue;
     }
     const fenceLine = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
     if (fence || fenceLine) {
-      if (!fence) fence = fenceLine[1];
-      else if (fenceLine && fence[0] === fenceLine[1][0] && fenceLine[1].length >= fence.length && !fenceLine[2].trim()) fence = null;
+      if (!fence) {
+        fence = fenceLine[1];
+        if (/^spec-built(?:\s|$)/.test(fenceLine[2].trimStart())) yield { line, index, nextIndex, specBuilt: true };
+      } else if (fenceLine && fence[0] === fenceLine[1][0] && fenceLine[1].length >= fence.length && !fenceLine[2].trim()) {
+        fence = null;
+      }
       continue;
     }
     const standalone = line.trim();
@@ -395,7 +400,7 @@ function* markdownLines(bytes) {
         continue;
       }
     }
-    yield { line, index, nextIndex: index + raw.length };
+    yield { line, index, nextIndex };
   }
 }
 
@@ -487,8 +492,17 @@ function section(options) {
   let end = marks?.lineStart ?? body.length;
   let level;
   let paragraph = null;
-  for (const { line, index, nextIndex } of markdownLines(bytes)) {
+  for (const { line, index, nextIndex, specBuilt } of markdownLines(bytes)) {
     if (index >= end) break;
+    if (specBuilt) {
+      // The build record and any following local spec belong outside the section.
+      if (start !== null) {
+        end = index;
+        break;
+      }
+      paragraph = null;
+      continue;
+    }
     if (paragraph?.nextIndex !== index) paragraph = null;
     const atx = atxHeading(line);
     const underline = /^ {0,3}(=+|-+)[ \t]*$/.exec(line);
