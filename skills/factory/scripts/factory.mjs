@@ -221,16 +221,53 @@ function usageRow(label, row, cost) {
   return `| ${[label, ...numbers, cost].join(" | ")} |`;
 }
 
+const htmlBlockTags = new Set((
+  "address article aside base basefont blockquote body caption center col colgroup dd details dialog dir div dl dt "
+  + "fieldset figcaption figure footer form frame frameset h1 h2 h3 h4 h5 h6 head header hr html iframe legend li "
+  + "link main menu menuitem nav noframes ol optgroup option p param search section summary table tbody td tfoot "
+  + "th thead title tr track ul"
+).split(" "));
+
+function htmlBlockEnd(line) {
+  if (/^ {0,3}<!--/.test(line)) return /-->/;
+  if (/^ {0,3}<\?/.test(line)) return /\?>/;
+  if (/^ {0,3}<!\[CDATA\[/.test(line)) return /\]\]>/;
+  if (/^ {0,3}<![A-Z]/.test(line)) return />/;
+  const tag = /^ {0,3}<([a-z][a-z0-9-]*)(?=[ \t/>]|$)/i.exec(line)?.[1]?.toLowerCase();
+  if (!tag) return null;
+  const closing = `</${tag}[ \\t]*>`;
+  if (["pre", "script", "style", "textarea"].includes(tag)) return new RegExp(closing, "i");
+  if (htmlBlockTags.has(tag) || /^ {0,3}<(?:[^<>"']|"[^"]*"|'[^']*')*>[ \t]*$/.test(line)) {
+    return new RegExp(`^[ \\t]*$|${closing}`, "i");
+  }
+  return null;
+}
+
 // Use a one-byte string for offsets, including when the body has CRLF or non-ASCII text.
 function* markdownLines(bytes) {
   let fence = null;
-  for (const { 0: raw, index } of bytes.matchAll(/[^\n]+/g)) {
-    const line = raw.replace(/\r$/, "");
+  let htmlEnd = null;
+  for (const { 0: raw, index } of bytes.matchAll(/[^\n]*\n|[^\n]+$/g)) {
+    const line = raw.replace(/\r?\n$|\r$/, "");
+    if (htmlEnd) {
+      if (htmlEnd.test(line)) htmlEnd = null;
+      continue;
+    }
     const fenceLine = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
-    if (fenceLine) {
+    if (fence || fenceLine) {
       if (!fence) fence = fenceLine[1];
-      else if (fence[0] === fenceLine[1][0] && fenceLine[1].length >= fence.length && !fenceLine[2].trim()) fence = null;
-    } else if (!fence) yield { line, index, nextIndex: index + raw.length + 1 };
+      else if (fenceLine && fence[0] === fenceLine[1][0] && fenceLine[1].length >= fence.length && !fenceLine[2].trim()) fence = null;
+      continue;
+    }
+    const standalone = line.trim();
+    if (standalone !== evidenceStart && standalone !== evidenceEnd) {
+      const end = htmlBlockEnd(line);
+      if (end) {
+        if (!end.test(line)) htmlEnd = end;
+        continue;
+      }
+    }
+    yield { line, index, nextIndex: index + raw.length };
   }
 }
 
