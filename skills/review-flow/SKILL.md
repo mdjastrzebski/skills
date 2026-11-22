@@ -63,7 +63,7 @@ Record one probe line for the findings header and the review body, for example `
 
 ## 4. Act
 
-**Auto mode.** `fix-issues` runs in auto mode only when the user explicitly requests it. Here that request is the user's own: asking to review their own code, or choosing "fix" on someone else's PR, counts as the explicit request for `fix-issues` auto mode. Always pass `auto` explicitly as its mode, never rely on its default, and never invoke it from the report, comment, or caller paths.
+**Auto mode.** `fix-issues` runs in auto mode only when the user explicitly requests it. Here that request is the user's own: asking to review their own code, or choosing "fix" or asking to "review and fix" on someone else's PR, counts as the explicit request for `fix-issues` auto mode. Always pass `auto` explicitly as its mode, never rely on its default, and never invoke it from the report, comment, or caller paths.
 
 **No findings.** In a cloud session (`CLAUDE_CODE_REMOTE=true`, or a Codex cloud task) with a PR target, post a brief `COMMENT` review: "No findings", the reviewed SHA, the guidance used, and the probe line. Otherwise report the clean result in chat. In report mode, always chat only.
 
@@ -100,6 +100,8 @@ Record one probe line for the findings header and the review body, for example `
    - Run `fix-issues` with `auto` passed explicitly as its mode, round `1`, as a pasted-list run with the fix set only. Pass each item rated `important` and not tagged pre-existing, so the user's explicit pick overrides its defer and follow-up rules. Keep the original rating in the review's own records.
    - If commits were made, ask once: "Push N commits to <head-owner>:<branch>?" Push only on an explicit yes, and only where GitHub allows it (a fork PR with maintainer edits allowed, or a same-repo branch the user can write to). Otherwise keep the commits local, name the local branch, and describe the changes in the review.
 4. If the fix and comment sets are both empty, report in chat and post nothing. Otherwise post one `COMMENT` review (see Publishing).
+
+**Fix all.** On your code, run Fix mode. On someone else's PR, print the numbered findings and the facts block from Ask mode (without the question), then run Ask mode step 3 with every finding in the fix set, each passed as `important` and not pre-existing. Keep the push question. Then post per Ask mode step 4.
 
 **Comment all.** Treat every finding as commented, run no fixes, then publish.
 
