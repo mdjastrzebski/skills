@@ -145,7 +145,6 @@ Record one probe line for the findings header and the review body, for example `
 - Anchor commented findings inline on the reviewed diff where possible, each prefixed with its ID (`F3:`) and written as the issue and impact in one or two plain sentences. Put a finding in the review body when there is no usable inline position or GitHub rejects its anchor.
 - Cite a fix commit only after its push succeeds.
 - Verify the review was posted, and report its link in chat with the outcome summary.
-- Add the review footer the harness requires; add no other attribution.
 
 ## Diagnostics
 

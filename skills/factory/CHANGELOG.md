@@ -10,6 +10,7 @@
 - Move Where to look first, Deferred, Follow-ups and Open questions from the Final handoff comment to a `## Reviewer notes` section at the end of the PR description, and replace the handoff's verdict table with one line per Review Round.
 - Write finding IDs on GitHub as `F1` instead of `#1`, which GitHub links to issues.
 - Replace the PR description's Evidence trail with a collapsed Diagnostics block for the Spec or Diagnosis, Build and Summary 1 stages (`factory.mjs pr-diagnostics`), with a run total; Summary 1 no longer carries Diagnostics.
+- Drop the rule against generated-by footers and co-author trailers, which harness tools add regardless.
 
 ## 0.11.0 (2026-11-22)
 
