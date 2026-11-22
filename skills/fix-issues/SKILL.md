@@ -2,7 +2,7 @@
 name: fix-issues
 description: Use when the user gives a list of issues, review findings, bug reports, or TODOs and asks to fix them, work through them, or "fix these issues" one by one. Also use when the user asks to "fix the PR comments", "address review comments/feedback", "fix comments on my PR", or "resolve the review"; the target is the PR given by number or URL, else the PR for the current branch. Triages and orders the list, then verifies and fixes each issue sequentially, with one commit per fixed issue on the current branch. Supports opt-in auto mode for unattended runs.
 metadata:
-  version: "0.6.0"
+  version: "0.7.0"
 ---
 
 # Fix Issues
@@ -97,7 +97,7 @@ Order:
 
 ## 4. Dispatch, one issue at a time
 
-For each issue in order, ask one subagent to follow the `fix-issue` skill and wait for its result. Provide the issue ID, kind, severity, verbatim report, source, current branch, fast checks, and commit style, and say that earlier issues in this batch may already be fixed and committed. If subagents are unavailable, follow the same instructions inline. Never run issues in parallel: each one must see the code as earlier fixes left it.
+For each issue in order, ask one subagent to follow the `fix-issue` skill and wait for its result. Provide the issue ID, kind, severity, verbatim report, source, current branch, fast checks, and commit style, and say that earlier issues in this batch may already be fixed and committed. Launch each worker on the standard tier (Sonnet level: Claude `sonnet`, GPT `terra`, latest version) at medium effort, or the light tier (Haiku level: Claude `haiku`, GPT `luna`) for a nit whose verification and fix are mechanical (a typo, a rename, formatting, a stale comment; Factory's model policy counts this as a mechanical task, not judging findings), or high for a subtle or cross-cutting issue; use the strong tier (Opus level: Claude `opus`, GPT `sol`) when high effort is not enough. Never use `xhigh` or `max` effort, or frontier models (Claude `fable`, GPT `astra`), unless the user explicitly asks for them. Set the model and effort explicitly rather than inheriting the session's. If subagents are unavailable, follow the same instructions inline. Never run issues in parallel: each one must see the code as earlier fixes left it.
 
 If `fix-issue` is not installed, pass this brief instead (fill in the brackets):
 

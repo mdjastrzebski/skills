@@ -2,7 +2,7 @@
 name: prepare-spec
 description: Use when the user wants a rough idea turned into an approved spec, says "grill me on this", "spec this out", "implement this idea", or "build this idea", asks to revise a saved spec ("revise #123", "change the spec", "update SPEC.md"), or Factory sends an idea or a supplied spec for approval. Interactive by default; use pipeline mode when Factory invokes the skill or the user explicitly requests it. Does not write code.
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
 ---
 
 # Prepare Spec
@@ -71,11 +71,15 @@ Write two versions of the spec:
 
 | Difficulty | Signals | Recommend (Claude Code example) |
 | --- | --- | --- |
-| Simple | one or two files, clear pattern to copy, low risk (copy change, config flag, small UI tweak, obvious bug fix) | economical model, low–medium effort — e.g. `haiku`, or `sonnet` at medium |
-| Moderate | several files in one area, new but conventional logic, some tests to write | `sonnet` at medium–high effort |
-| Hard | cross-cutting or architectural change, concurrency, data migrations, security-sensitive code, subtle algorithms, unfamiliar or poorly structured code | most capable model, high effort — e.g. `opus` at high |
+| Simple | one or two files, clear pattern to copy, low risk (copy change, config flag, small UI tweak, obvious bug fix) | standard tier, low–medium effort — e.g. `sonnet` at low or medium; light tier (`haiku` at medium) only for a purely mechanical edit with an exact pattern to copy and a check that proves it |
+| Moderate | several files in one area, new but conventional logic, some tests to write | standard tier at high effort, or strong tier at medium — e.g. `sonnet` at high |
+| Hard | cross-cutting or architectural change, concurrency, data migrations, security-sensitive code, subtle algorithms, unfamiliar or poorly structured code | strong tier, high effort — e.g. `opus` at high |
 
 When in doubt between two tiers, pick the higher one. Name the signals that drove the rating. Use the model names the current harness accepts.
+
+Pick from three tiers, at the latest version the harness offers: **light** (Haiku level: Claude `haiku`, GPT `luna`), **standard** (Sonnet level: Claude `sonnet`, GPT `terra`), and **strong** (Opus level: Claude `opus`, GPT `sol`). Use light only for narrow, mechanical tasks whose output is easy to check, especially many small ones in parallel: locating files or call sites, collecting or summarizing data, describing a mechanical block of a diff, or a trivial edit with an exact pattern to copy. Never use light for specs, builds beyond trivial edits, reviews, judging findings, or security-sensitive work. Default to standard. Use low, medium, or high effort only; never `xhigh` or `max`. When a tier at high effort is not enough, move up a tier (`sonnet` → `opus`) instead of raising the effort. Strong at high effort is the ceiling. Use frontier models (Claude `fable`, GPT `astra`) or `xhigh` and higher effort only when the user explicitly asks for them in this run. A user override may choose either; record it as the user's request.
+
+An override the user approves here and that is saved in the spec counts as an explicit request for the run that builds the spec.
 
 ## 4. Present the spec for approval
 

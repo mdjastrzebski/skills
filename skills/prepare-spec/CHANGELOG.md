@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0 (2026-11-22)
+
+- Build recommendations now follow the Haiku, Sonnet, and Opus tiers: Sonnet level for simple and moderate builds, Opus level at high effort for hard ones, never `xhigh` or `max`, and frontier models (`fable`, `astra`) only when you explicitly ask.
+- Allow a Haiku-level recommendation only for a purely mechanical edit with an exact pattern to copy and a check that proves it.
+
 ## 0.2.0 (2026-11-22)
 
 - Renamed from `clarify-idea`.
