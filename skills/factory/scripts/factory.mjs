@@ -406,12 +406,19 @@ function diffPath(value) {
   return Buffer.from(bytes, "latin1").toString("utf8").replace(/^b\//, "");
 }
 
+function isHunkRange(start, count) {
+  return isCount(start) && isCount(count)
+    && (count === 0 || (start > 0 && Number.isSafeInteger(start + (count - 1))));
+}
+
 function rightLines(diff) {
   const anchors = new Map();
+  const lines = diff.split("\n");
   let file = null;
   let hunk = null;
-  for (const line of diff.split("\n")) {
-    if (hunk) {
+  let gitPatch = false;
+  for (const [index, line] of lines.entries()) {
+    if (hunk?.left || hunk?.right) {
       if (line.startsWith("\\ No newline at end of file")) continue;
       if (line[0] === " " || line[0] === "+") {
         if (file !== null) anchors.get(file).add(hunk.line);
@@ -420,10 +427,16 @@ function rightLines(diff) {
       }
       if (line[0] === " " || line[0] === "-") hunk.left--;
       requireInput(/[ +\-]/.test(line[0] ?? "") && hunk.left >= 0 && hunk.right >= 0, "invalid unified diff hunk");
-      if (!hunk.left && !hunk.right) hunk = null;
       continue;
     }
-    if (line.startsWith("diff --git ")) file = null;
+    const gitHeader = line.startsWith("diff --git ") || line.startsWith("Submodule ");
+    if (gitHeader) gitPatch = true;
+    const plainHeader = !gitPatch && line.startsWith("--- ") && lines[index + 1]?.startsWith("+++ ");
+    if (gitHeader || plainHeader) {
+      file = null;
+      hunk = null;
+    }
+    requireInput(!hunk || !/^[ +\-]/.test(line), "excess lines in unified diff hunk");
     if (line.startsWith("+++ ")) {
       file = diffPath(line.slice(4).replace(/\r$/, ""));
       if (file !== null && !anchors.has(file)) anchors.set(file, new Set());
@@ -433,10 +446,11 @@ function rightLines(diff) {
     requireInput(match, "invalid unified diff hunk header");
     const [, leftStart, leftCount = "1", rightStart, rightCount = "1"] = match;
     const [firstLeftLine, left, firstRightLine, right] = [leftStart, leftCount, rightStart, rightCount].map(Number);
-    requireInput([firstLeftLine, left, firstRightLine, right].every(isCount), "invalid unified diff hunk header range");
-    if (left || right) hunk = { left, right, line: firstRightLine };
+    requireInput((left || right) && isHunkRange(firstLeftLine, left) && isHunkRange(firstRightLine, right),
+      "invalid unified diff hunk header range");
+    hunk = { left, right, line: firstRightLine };
   }
-  requireInput(!hunk, "incomplete unified diff hunk");
+  requireInput(!hunk?.left && !hunk?.right, "incomplete unified diff hunk");
   return anchors;
 }
 
