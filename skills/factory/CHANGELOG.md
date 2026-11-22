@@ -15,6 +15,8 @@
 - Drop the rule against generated-by footers and co-author trailers, which harness tools add regardless.
 - Write **Checks:** as a bullet list, one check per bullet, with a `Not run:` bullet for skipped checks.
 - Drop the Summary 1 comment: the PR description's summary replaces it, and diagnosis evidence goes in its Reviewer notes. Keep the author's summary during existing PR review and put updated facts and checks in the Final handoff comment.
+- Link review table findings to their inline comments by updating the review body after submission, since GitHub assigns the comment URLs only then.
+- Attribute Codex subagent usage by the launch label stamped after the rollout's own start, so a forked child no longer takes its parent's inherited label.
 
 ## 0.11.0 (2026-11-22)
 
