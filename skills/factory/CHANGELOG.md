@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.11.0 (2026-11-22)
+
+- Use stage owners when the harness supports nested subagents, with automatic flat and inline fallbacks.
+- Prepare stage diagnostics, checkpoints, comparisons, commit verification, and publishing files with a local helper.
+- Use verify-and-fix for hard findings and handle routine findings together.
+- Resume interrupted fixes from saved verdicts and verified local commits in every execution mode.
+- Assign round IDs after splitting compound findings and merging duplicate reports.
+- Recover a completed push and its review inputs if the round stops before publication.
+- Recover corrective commits and verify that the final diff retains only the in-scope edits.
+
 ## 0.10.0 (2026-11-22)
 
 - Set an explicit model and effort policy for every subagent and reviewer Factory launches: Sonnet level (`sonnet`/`terra`) by default, Opus level (`opus`/`sol`) at high effort for the reviewer, never `xhigh` or `max`, and frontier models (`fable`, `astra`) only when you explicitly ask.

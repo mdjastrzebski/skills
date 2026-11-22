@@ -44,8 +44,10 @@ Run `$factory SPEC.md` or `$factory <spec issue URL>` in a fresh session. Factor
 Use `$factory PR #1966` or `$factory diagnose PR #1966` for an existing PR. Factory uses the linked issue or PR description, compares the base with the PR changes, and returns the diagnosis in chat. Request the review and fix pipeline explicitly to continue beyond diagnosis. To install the runtime skills in a repo or locally, install them together.
 
 ```bash
-npx skills add https://github.com/mdjastrzebski/skills --skill factory diagnose-issue prepare-spec implement-spec summarize-changes fix-issues fix-issue
+npx skills add https://github.com/mdjastrzebski/skills --skill factory diagnose-issue prepare-spec implement-spec summarize-changes fix-issues verify-and-fix
 ```
+
+**Nested subagents.** Factory runs cheaper when subagents can launch subagents. In Claude Code, add `{"env": {"CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "3"}}` to the target repo's `.claude/settings.json` or set the variable in cloud environment or user settings. It applies to new sessions. In Codex, nesting works by default. Factory falls back automatically when nesting is unavailable and asks once about switching the orchestrator to the standard tier if it runs on another known tier.
 
 The tree shows which skills call each other. Each stage skill can also be invoked directly.
 
@@ -56,7 +58,7 @@ factory                  # orchestrates the run, posts the handoff, marks the PR
 ├── implement-spec       # build in a sized subagent on a new or existing PR branch
 ├── summarize-changes    # facts for the Summary 1 and Final handoff comments
 └── fix-issues           # triage and fix each review round's findings
-    └── fix-issue        # verify and fix one finding
+    └── verify-and-fix   # verify and fix one finding
 ```
 
 | Skill | Summary | Install |
@@ -67,7 +69,7 @@ factory                  # orchestrates the run, posts the handoff, marks the PR
 | `implement-spec` | Build an approved spec or fix plan in a subagent at the recommended model and effort, verify it, and report. Pipeline mode opens a draft PR or pushes the change to a supplied PR branch. | `npx skills add https://github.com/mdjastrzebski/skills --skill implement-spec` |
 | `summarize-changes` | Summarize a PR, a branch, or your current changes (default: current branch against the default branch, including uncommitted changes) at the level of approach: neutral facts first (big blocks, structural decisions, assumptions, plus a suggested review order and where line-level review matters most), then a skeptical evaluation from a fresh subagent. Large changes follow a separate procedure (classify files, collapse mechanical edits, summarize blocks in parallel), with coverage stating what was read. Not a line-level review; offers to post the result as a PR comment. | `npx skills add https://github.com/mdjastrzebski/skills --skill summarize-changes` |
 | `fix-issues` | Work through a list of issues, or the unresolved review comments on a GitHub PR, one by one: triage and order them (bugs first, then by severity), verify and fix each one or explain the verdict, commit each fix separately on the current branch, and summarize the results. For PR comments, interactive mode asks before fixing and before pushing and replying. Opt-in auto mode handles bugs and medium-or-higher improvements without prompts, defers low-severity improvements unless the caller rated them important, leaves findings tagged pre-existing for a follow-up change even when rated important, and posts a round summary. | `npx skills add https://github.com/mdjastrzebski/skills --skill fix-issues` |
-| `fix-issue` | Verify one reported issue or review finding, make the smallest warranted fix, and report the verdict and checks. | `npx skills add https://github.com/mdjastrzebski/skills --skill fix-issue` |
+| `verify-and-fix` | Verify one reported issue or review finding, make the smallest warranted fix, and report the verdict and checks. | `npx skills add https://github.com/mdjastrzebski/skills --skill verify-and-fix` |
 
 ### Cloud sessions
 
@@ -106,10 +108,10 @@ Standalone skills that are not part of the factory workflow.
 | --- | --- | --- |
 | `review-flow` | Review code when you ask to "review", "review my changes", or "review PR #N". Defaults to the current changes (uncommitted edits, else the current branch's open PR, else the branch against the default branch). Probes the diff to pick the reviewer's model and effort, then numbers the findings. Your own code gets the findings fixed through `fix-issues`; on someone else's PR you choose per finding to fix, comment on, or drop, and pushes to their branch need your yes. Factory runs review through `factory` instead. | `npx skills add https://github.com/mdjastrzebski/skills --skill review-flow` |
 
-The fix paths need `fix-issues` and `fix-issue` installed too, so install them together.
+The fix paths need `fix-issues` and `verify-and-fix` installed too, so install them together.
 
 ```bash
-npx skills add https://github.com/mdjastrzebski/skills --skill review-flow fix-issues fix-issue
+npx skills add https://github.com/mdjastrzebski/skills --skill review-flow fix-issues verify-and-fix
 ```
 
 ## Legacy Skills
