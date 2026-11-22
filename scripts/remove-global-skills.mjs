@@ -17,6 +17,15 @@ const claudeDir = process.env.CLAUDE_SKILLS_DIR || `${home}/.claude/skills`;
 const lock = process.env.SKILLS_LOCK_FILE || `${home}/.agents/.skill-lock.json`;
 const dryRun = process.argv[2] === '--dry-run';
 
+function fileInfo(path, inspect = statSync) {
+  try {
+    return inspect(path, { throwIfNoEntry: false });
+  } catch (error) {
+    if (error.code === 'EACCES' || error.code === 'EPERM') return undefined;
+    throw error;
+  }
+}
+
 function skillNames(dir) {
   let names;
   try {
@@ -26,7 +35,7 @@ function skillNames(dir) {
     throw error;
   }
   return names
-    .filter((name) => !name.startsWith('.') && statSync(`${dir}/${name}/SKILL.md`, { throwIfNoEntry: false })?.isFile())
+    .filter((name) => !name.startsWith('.') && fileInfo(`${dir}/${name}/SKILL.md`)?.isFile())
     .sort((left, right) => Buffer.compare(Buffer.from(left), Buffer.from(right)));
 }
 
@@ -36,7 +45,7 @@ function readLock() {
 }
 
 function lockSource(name) {
-  if (!statSync(lock, { throwIfNoEntry: false })?.isFile()) return '';
+  if (!fileInfo(lock)?.isFile()) return '';
 
   let value = readLock();
   for (const key of ['skills', name, 'source']) {
@@ -54,7 +63,7 @@ function removeCopies() {
   const skills = [...skillNames(`${repo}/skills`), ...skillNames(`${repo}/skills/legacy`)];
   for (const name of skills) {
     const copy = `${agentsDir}/${name}`;
-    const copyInfo = lstatSync(copy, { throwIfNoEntry: false });
+    const copyInfo = fileInfo(copy, lstatSync);
     if (!copyInfo || copyInfo.isSymbolicLink()) continue;
 
     const source = lockSource(name);
@@ -68,7 +77,7 @@ function removeCopies() {
     else rmSync(copy, { recursive: true, force: true });
 
     const claudeCopy = `${claudeDir}/${name}`;
-    if (lstatSync(claudeCopy, { throwIfNoEntry: false })?.isSymbolicLink()) {
+    if (fileInfo(claudeCopy, lstatSync)?.isSymbolicLink()) {
       if (dryRun) console.log(`would: rm ${claudeCopy}`);
       else unlinkSync(claudeCopy);
     }
