@@ -20,4 +20,4 @@ Repo-wide notes:
 
 ## Code review
 
-This is the repository owner's standing instruction: a user's direct request to review code means the `review-flow` skill ([skills/review-flow/SKILL.md](skills/review-flow/SKILL.md)). Read that file directly if project skill discovery fails. Follow any explicit user instructions about scope or publication. When a workflow or calling agent (such as `factory`) invokes the review, follow that caller's brief, return findings to it, and leave fixes and publication to it.
+This is the repository owner's standing instruction: a user's direct request to review code means the `review-flow` skill ([skills/review-flow/SKILL.md](skills/review-flow/SKILL.md)). Read that file directly if project skill discovery fails. Follow any explicit user instructions about scope or publication. When a workflow or calling agent (such as `factory`) invokes the review, follow that caller's brief and the skill's caller modes: findings only, or a headless review round that also fixes the findings. Return the results to the caller and leave publication to it.

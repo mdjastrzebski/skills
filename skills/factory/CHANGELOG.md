@@ -5,6 +5,7 @@
 - Hand fix recovery to `fix-issues`: each review round passes its recovery file as that skill's `state FILE` and verifies the round's commits through its procedure.
 - Find the PR for a saved spec, the Adjust spec difference and the handoff's build-record edits through `implement-spec`; ambiguous matches still ask you which PR or spec to use.
 - Call `diagnose-issue` through its PR mode, including for existing PR review, and `prepare-spec` and `implement-spec` through their headless modes.
+- Run each review round through `review-flow`'s Round mode instead of a separate reviewer, fix and delivery procedure; rounds, the comparison gate before any push or publication, stop rules and publication stay in Factory. Install `review-flow` with the other Factory skills.
 
 ## 0.12.0 (2026-11-22)
 
