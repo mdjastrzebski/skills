@@ -156,7 +156,7 @@ test("agent log rejects duplicates and unknown IDs", () => {
   }
 });
 
-test("PR description Diagnostics replaces the Evidence trail and rewrites in place", () => {
+test("PR description Diagnostics archives the Evidence trail and preserves history across Adjust and resume", () => {
   const usage = path.join(dir, "bad-usage.json");
   const agents = path.join(dir, "pr-agents.json");
   log(agents, "Build");
@@ -170,12 +170,14 @@ test("PR description Diagnostics replaces the Evidence trail and rewrites in pla
   fs.writeFileSync(checkpoint, JSON.stringify({ agents: JSON.parse(fs.readFileSync(agents, "utf8")).agents,
     stages: { Spec: stage("Spec", 1000, 0.5, 0), Build: stage("Build", 2000, 1.25, 3) } }));
   const body = path.join(dir, "pr-body.md");
-  fs.writeFileSync(body, "## Summary\n\n- x\n\n<!-- evidence-trail:start -->\n<details><summary>Evidence trail</summary>\n\nold\n\n</details>\n<!-- evidence-trail:end -->\n");
+  const legacy = "<details><summary>Evidence trail</summary>\n\n| 3 | Round 1 | [Review](https://example.org/review) |\n\n</details>";
+  fs.writeFileSync(body, `## Summary\n\n- x\n\n<!-- evidence-trail:start -->\n${legacy}\n<!-- evidence-trail:end -->\n`);
   const once = path.join(dir, "pr-once.md");
   const result = factory("pr-diagnostics", "--body", body, "--file", checkpoint, "--stage", "Spec", "--stage", "Build", "--out", once);
   assert.equal(result.replaced_legacy, true);
   const text = fs.readFileSync(once, "utf8");
-  assert.doesNotMatch(text, /Evidence trail|evidence-trail/);
+  assert.doesNotMatch(text, /<!-- evidence-trail:/);
+  assert.ok(text.includes(legacy));
   assert.match(text, /<summary>Diagnostics — Spec · Build · 3 agents · \$1\.75<\/summary>/);
   assert.match(text, /- Run so far: Spec, Build · 3k tokens · \$1\.75/);
   assert.match(text, /\*\*Build · nested · 3 agents · N\/A\*\*\n\n- Mode: nested/);
@@ -188,6 +190,32 @@ test("PR description Diagnostics replaces the Evidence trail and rewrites in pla
   const withNotes = path.join(dir, "pr-with-notes.md");
   factory("section", "--body", twice, "--heading", "## Reviewer notes", "--content", notes, "--out", withNotes);
   assert.match(fs.readFileSync(withNotes, "utf8"), /## Reviewer notes[\s\S]*<!-- factory-diagnostics:start -->/);
+
+  const adjusted = path.join(dir, "pr-adjusted.md");
+  const adjustCheckpoint = path.join(dir, "pr-adjust-checkpoint.json");
+  fs.writeFileSync(adjustCheckpoint, JSON.stringify({
+    description: { previous_body: withNotes },
+    stages: { "Build 2": stage("Build", 4000, 2.5, 3), "Review Round 2": { end: until, split_pending: true, tokens: 900, cost_usd: 0.9 } },
+  }));
+  const adjust = (input, out) => factory("pr-diagnostics", "--body", input, "--file", adjustCheckpoint, "--stage", "Build 2", "--out", out);
+  assert.equal(adjust(withNotes, adjusted).run_tokens, 4000);
+  const adjustedText = fs.readFileSync(adjusted, "utf8");
+  assert.match(adjustedText, /- Run so far: Build 2 · 4k tokens · \$2\.50/);
+  assert.match(adjustedText, /- Run so far: Spec, Build · 3k tokens · \$1\.75/);
+  assert.ok(adjustedText.includes(legacy));
+  assert.equal(adjustedText.match(/factory-diagnostics:history/g).length, 1);
+  const resumed = path.join(dir, "pr-resumed.md");
+  adjust(adjusted, resumed);
+  assert.equal(fs.readFileSync(resumed, "utf8"), adjustedText);
+
+  const next = path.join(dir, "pr-next-adjust.md");
+  factory("checkpoint", "set", "--file", adjustCheckpoint, "description.previous_body", JSON.stringify(resumed));
+  factory("checkpoint", "set", "--file", adjustCheckpoint, "stages", JSON.stringify({ "Build 3": stage("Build", 5000, 3, 3) }));
+  factory("pr-diagnostics", "--body", resumed, "--file", adjustCheckpoint, "--stage", "Build 3", "--out", next);
+  const nextText = fs.readFileSync(next, "utf8");
+  assert.deepEqual(nextText.match(/- Run so far: .+?(?= ·)/g), ["- Run so far: Build 3", "- Run so far: Build 2", "- Run so far: Spec, Build"]);
+  assert.equal(nextText.match(/factory-diagnostics:history/g).length, 1);
+  assert.equal(nextText.match(/<summary>Evidence trail<\/summary>/g).length, 1);
 });
 
 test("refreshing the PR Summary preserves the local spec build record and document", () => {

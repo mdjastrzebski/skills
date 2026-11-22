@@ -38,8 +38,9 @@ class UsageError extends Error {}
 
 const diagnosticsStart = "<!-- factory-diagnostics:start -->";
 const diagnosticsEnd = "<!-- factory-diagnostics:end -->";
-// Legacy PR descriptions carry an Evidence trail panel, which pr-diagnostics replaces.
-const markerPairs = [[diagnosticsStart, diagnosticsEnd], ["<!-- evidence-trail:start -->", "<!-- evidence-trail:end -->"]];
+const diagnosticsHistoryStart = "<!-- factory-diagnostics:history -->";
+const evidenceStart = "<!-- evidence-trail:start -->";
+const markerPairs = [[diagnosticsStart, diagnosticsEnd], [evidenceStart, "<!-- evidence-trail:end -->"]];
 const markerLines = new Set(markerPairs.flat());
 const tokenFields = ["input", "output", "cache_read", "cache_write_5m", "cache_write_1h"];
 const comparisonFields = ["head", "base_ref", "merge_base"];
@@ -434,12 +435,31 @@ function spacing(bytes, eol) {
   return bytes.endsWith("\n") ? eol : eol + eol;
 }
 
+function diagnosticsHistory(body, marks, includePriorRun) {
+  if (!marks) return [];
+  const panel = body.subarray(marks.start + marks.startMarker.length, marks.end)
+    .toString("utf8").trim().split(/\r?\n/);
+  if (marks.startMarker === evidenceStart) return [...panel, ""];
+  const historyStart = panel.indexOf(diagnosticsHistoryStart);
+  if (historyStart === -1) return includePriorRun ? [...panel, ""] : [];
+  requireInput(panel.at(-1) === "</details>", "missing Diagnostics panel closing tag");
+  const history = panel.slice(historyStart + 2, -1);
+  if (!includePriorRun) return history;
+  return [...panel.slice(0, historyStart), "</details>", "", ...history];
+}
+
 function prDiagnostics(options) {
   const body = read(options.body);
   const bytes = body.toString("latin1");
   const eol = bytes.includes("\r\n") ? "\r\n" : "\n";
   const marks = bodyMarkers(bytes);
   const data = readCheckpoint(options.file, false);
+  const previousBodyPath = data.description?.previous_body;
+  let history = diagnosticsHistory(body, marks, false);
+  if (isText(previousBodyPath)) {
+    const previousBody = read(previousBodyPath);
+    history = diagnosticsHistory(previousBody, bodyMarkers(previousBody.toString("latin1")), true);
+  }
   const stages = isObject(data.stages) ? data.stages : {};
   const names = options.stage;
   const parts = [];
@@ -458,7 +478,7 @@ function prDiagnostics(options) {
     agents += isCount(stage.agents) ? stage.agents : 0;
     cost = cost === null || stage.cost_usd == null ? null : cost + stage.cost_usd;
   }
-  const run = Object.entries(stages).filter(([name, stage]) => name !== "Ready" && isObject(stage) && stage.end);
+  const run = Object.entries(stages).filter(([name, stage]) => name !== "Ready" && isObject(stage) && stage.end && !stage.split_pending);
   const runTokens = run.every(([, stage]) => isCount(stage.tokens)) ? run.reduce((sum, [, stage]) => sum + stage.tokens, 0) : null;
   const runCost = run.every(([, stage]) => isCost(stage.cost_usd)) ? run.reduce((sum, [, stage]) => sum + stage.cost_usd, 0) : null;
   const summary = [names.join(" · "), `${agents} agent${agents === 1 ? "" : "s"}`, cost === null ? "N/A" : dollars(cost)].join(" · ");
@@ -466,14 +486,16 @@ function prDiagnostics(options) {
     `<details><summary>Diagnostics — ${markdownCell(summary)}</summary>`, "",
     `- Run so far: ${run.map(([name]) => markdownCell(name)).join(", ") || "none"} · ${runTokens === null ? "N/A" : compact(runTokens)} tokens · ${runCost === null ? "N/A" : dollars(runCost)}`,
     "- Review Round and Final handoff Diagnostics are on their own review and comment.", "",
-    ...parts, "</details>",
+    ...parts,
+    ...(history.length ? [diagnosticsHistoryStart, "", ...history] : []),
+    "</details>",
   ].join(eol);
   const wrapped = `${diagnosticsStart}${eol}${panel}${eol}${diagnosticsEnd}`;
   const result = marks
     ? edit(body, marks.start, marks.end + marks.endMarker.length, wrapped)
     : edit(body, body.length, body.length, `${spacing(bytes, eol)}${wrapped}${eol}`);
   fs.writeFileSync(options.out, result);
-  return { stages: names.length, agents, cost_usd: cost, run_tokens: runTokens, run_cost_usd: runCost, replaced_legacy: marks?.startMarker === markerPairs[1][0] };
+  return { stages: names.length, agents, cost_usd: cost, run_tokens: runTokens, run_cost_usd: runCost, replaced_legacy: marks?.startMarker === evidenceStart };
 }
 
 function section(options) {

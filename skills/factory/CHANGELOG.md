@@ -11,7 +11,7 @@
 - Pass owners their agent ID, run ID and an agent-log path so their workers are logged, record what the orchestrator did in each stage, and recheck the spec store at handoff with `pin`.
 - Move Where to look first, Deferred, Follow-ups and Open questions from the Final handoff comment to a `## Reviewer notes` section at the end of the PR description, and replace the handoff's verdict table with one line per Review Round.
 - Write finding IDs on GitHub as `F1` instead of `#1`, which GitHub links to issues.
-- Replace the PR description's Evidence trail with a collapsed Diagnostics block for the Spec or Diagnosis, Build and Summary 1 stages (`factory.mjs pr-diagnostics`), with a run total; Summary 1 no longer carries Diagnostics.
+- Replace the PR description's Evidence trail with a collapsed Diagnostics block for the Spec or Diagnosis, Build and Summary 1 stages (`factory.mjs pr-diagnostics`), with a run total; Summary 1 no longer carries Diagnostics. Preserve prior Diagnostics and legacy Evidence trail in the panel across Adjust and resume.
 - Drop the rule against generated-by footers and co-author trailers, which harness tools add regardless.
 - Write **Checks:** as a bullet list, one check per bullet, with a `Not run:` bullet for skipped checks.
 - Drop the Summary 1 comment: the PR description's summary replaces it, and diagnosis evidence goes in its Reviewer notes. Keep the author's summary during existing PR review and put updated facts and checks in the Final handoff comment.
