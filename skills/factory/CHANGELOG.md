@@ -13,7 +13,7 @@
 - Replace the PR description's Evidence trail with a collapsed Diagnostics block for the Spec or Diagnosis, Build and Summary 1 stages (`factory.mjs pr-diagnostics`), with a run total; Summary 1 no longer carries Diagnostics.
 - Drop the rule against generated-by footers and co-author trailers, which harness tools add regardless.
 - Write **Checks:** as a bullet list, one check per bullet, with a `Not run:` bullet for skipped checks.
-- Drop the Summary 1 comment: the PR description's summary replaces it, and diagnosis evidence goes in its Reviewer notes.
+- Drop the Summary 1 comment: the PR description's summary replaces it, and diagnosis evidence goes in its Reviewer notes. Keep the author's summary during existing PR review and put updated facts and checks in the Final handoff comment.
 
 ## 0.11.0 (2026-11-22)
 
