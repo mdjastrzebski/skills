@@ -25,7 +25,9 @@ Take the issues the user gave: a pasted list, code-review output, GitHub issue l
 
 A findings list supplied by a calling workflow (such as `factory`) is a pasted-list run, even when its items link PR comments: do not fetch PR feedback, and finish in Step 6, leaving any push and PR replies to the caller. An explicitly empty findings list in auto mode means the review ran and found nothing. Continue to the round summary with an empty plan and zero counts.
 
-When a workflow supplies a list already split and deduplicated with unique IDs, keep those IDs throughout triage and in the verdict table. Otherwise give each issue a short ID (`#1`, `#2`, ...) in the order the user gave them. Keep the user's wording, split items that bundle separate problems, and merge exact duplicates.
+When Factory explicitly passes `preserve IDs`, verify that each supplied item reports one issue, the list has no duplicate reports, and each item has a distinct ID of the form `#1`, `#2`, etc. Gaps in the sequence are allowed. If any check fails, return a blocker to Factory before triage or fixes. Keep the supplied IDs throughout triage and in the verdict table.
+
+For other invocations, give each issue a short ID (`#1`, `#2`, ...) in the order the user gave them, and keep the user's wording. Split items that bundle several separate problems. Merge exact duplicates.
 
 For a GitHub issue link, read the issue with `gh issue view URL` when an authenticated `gh` is available. Otherwise, use the equivalent GitHub MCP issue reader (for example, `issue_read` with method `get`).
 

@@ -6,6 +6,7 @@
 - Prepare stage diagnostics, checkpoints, comparisons, commit verification, and publishing files with a local helper.
 - Use verify-and-fix for hard findings and handle routine findings together.
 - Resume interrupted fixes from saved verdicts and verified local commits in every execution mode.
+- Assign round IDs after splitting compound findings and merging duplicate reports.
 
 ## 0.10.0 (2026-11-22)
 
