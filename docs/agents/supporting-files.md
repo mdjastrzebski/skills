@@ -19,11 +19,16 @@ Do not create `references/` just because another skill has one.
 
 ## Scripts
 
-Add `skills/<skill-name>/scripts/` only for deterministic work the model would otherwise do by hand and get wrong, such as fetching and aggregating data or computing statistics.
+Add `skills/<skill-name>/scripts/` for deterministic work the model would otherwise do by hand and get wrong, or that a short script does more cheaply and repeatably, such as fetching and aggregating data, parsing, validating, or computing statistics. Keep each script small. If it grows large, it probably does too much.
 
 When adding `scripts/`:
 
-- ship self-contained `.mjs` files in `skills/<skill-name>/scripts/` using only Node 18+ built-ins such as `node:fs`, `node:child_process`, and `node:path`. Invoke them as `node <skill-dir>/scripts/<name>.mjs`. They require no additional dependencies.
+- ship self-contained `.mjs` files in `skills/<skill-name>/scripts/` using only Node 20+ built-ins such as `node:fs`, `node:child_process`, and `node:path`. Invoke them as `node <skill-dir>/scripts/<name>.mjs`. They require no additional dependencies and no build step.
+- make scripts portable: they must run the same on Linux, macOS, and Windows.
+  - Build paths with `node:path` and `node:url` (`fileURLToPath(import.meta.url)`), never string concatenation with `/` or `\`.
+  - Do not depend on a shell, shell syntax, or platform tools (`grep`, `sed`, `awk`). Call `git` or `gh` through `child_process` with an argument array, not a command string.
+  - Accept both `\n` and `\r\n` line endings, and never assume a home directory or temp path. Use `os.homedir()` and `os.tmpdir()`.
+  - Do not use APIs newer than Node 20.
 - keep `skills/index-github/scripts/gh_health.py` in Python as an existing exception. Do not add new Python scripts.
 - use Bash for root `scripts/` tools that mostly handle Git or filesystem plumbing. Use `.mjs` when a tool parses or edits JSON or contains substantial logic.
 - make it read-only unless writing is the skill's purpose
